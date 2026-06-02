@@ -15,6 +15,8 @@ function mapLegacySurvey(item: LegacySurveyDto): SurveyDto {
   return {
     id: String(item.id),
     name: item.adi?.trim() || '-',
+    aciklama: item.aciklama ?? null,
+    kaynak: item.kaynak ?? undefined,
   }
 }
 
@@ -61,7 +63,7 @@ export const surveysApi = {
 
   delete: (id: string) =>
     withDevFallback(
-      () => apiClient.delete<void>(`/api/AnketBaslik${id}`),
+      () => apiClient.delete<void>(`/api/AnketBaslik/${id}`),
       () => {
         devSurveysStore.delete(id)
       },

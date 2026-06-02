@@ -89,7 +89,7 @@ export function SurveysTable({
         <Table
           columns={columns}
           data={data}
-          keyExtractor={(row) => row.id}
+          keyExtractor={(row) => `${row.kaynak ?? 'unknown'}-${row.id}`}
           isLoading={isLoading}
           emptyMessage="Henüz anket yok. Soldan yeni anket ekleyebilirsiniz."
         />

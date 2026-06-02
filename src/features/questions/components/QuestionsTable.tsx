@@ -1,4 +1,4 @@
-import { RefreshCw, Pencil, Ban } from 'lucide-react'
+import { RefreshCw, Pencil, Ban, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Table, type TableColumn } from '@/components/ui/Table'
 import { ErrorState } from '@/components/feedback/ErrorState'
@@ -12,7 +12,9 @@ interface QuestionsTableProps {
   onRefresh: () => void
   onEdit: (question: QuestionDto) => void
   onSetPassive: (question: QuestionDto) => void
+  onDelete: (question: QuestionDto) => void
   isUpdating: boolean
+  isDeleting: boolean
 }
 
 export function QuestionsTable({
@@ -23,7 +25,9 @@ export function QuestionsTable({
   onRefresh,
   onEdit,
   onSetPassive,
+  onDelete,
   isUpdating,
+  isDeleting,
 }: QuestionsTableProps) {
   const columns: TableColumn<QuestionDto>[] = [
     {
@@ -37,10 +41,10 @@ export function QuestionsTable({
       ),
     },
     {
-      key: 'bolumAdi',
-      header: 'BÖLÜM',
-      className: 'w-24',
-      render: (row) => row.bolumAdi ?? (row.bolumId != null ? String(row.bolumId) : '-'),
+      key: 'baslikAdi',
+      header: 'BAŞLIK',
+      className: 'w-44',
+      render: (row) => row.baslikAdi ?? '-',
     },
     {
       key: 'id',
@@ -78,7 +82,7 @@ export function QuestionsTable({
     {
       key: 'actions',
       header: 'İŞLEMLER',
-      className: 'w-36',
+      className: 'w-44',
       render: (row) => (
         <div className="flex gap-1">
           <Button
@@ -100,6 +104,18 @@ export function QuestionsTable({
           >
             <Ban className="h-4 w-4 text-amber-600" />
           </Button>
+          {row.kaynak === 'AppDb' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Sil"
+              disabled={isDeleting}
+              onClick={() => onDelete(row)}
+              title="Soruyu sil"
+            >
+              <Trash2 className="h-4 w-4 text-red-600" />
+            </Button>
+          )}
         </div>
       ),
     },
@@ -126,7 +142,7 @@ export function QuestionsTable({
         <Table
           columns={columns}
           data={data}
-          keyExtractor={(row) => String(row.id)}
+          keyExtractor={(row) => `${row.kaynak ?? 'unknown'}-${row.id}`}
           isLoading={isLoading}
           emptyMessage="Henüz soru yok."
           pagination={{ pageSize: 25, pageSizeOptions: [10, 25, 50, 100] }}

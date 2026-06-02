@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { ClipboardList, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -9,7 +9,12 @@ import { Modal } from '@/components/ui/Modal'
 import { getErrorMessage } from '@/lib/api/api-error'
 import { QuestionForm } from '../components/QuestionForm'
 import { QuestionsTable } from '../components/QuestionsTable'
-import { useQuestions, useUpdateQuestion } from '../hooks/use-questions'
+import {
+  useDeleteQuestion,
+  useQuestions,
+  useSetQuestionActive,
+  useUpdateQuestion,
+} from '../hooks/use-questions'
 import { useCreateSurvey, useSurveys } from '@/features/surveys/hooks/use-surveys'
 import { CATEGORY_OPTIONS } from '../constants'
 import { PageContainer } from '@/components/layout/PageContainer'
@@ -18,30 +23,25 @@ import type { QuestionDto } from '../types/question.types'
 export function QuestionsPage() {
   const location = useLocation()
   const isDefinitionsPage = location.pathname.startsWith('/tanimlamalar')
-  const questionsQuery = useQuestions()
   const surveysQuery = useSurveys()
   const createSurvey = useCreateSurvey()
   const updateQuestion = useUpdateQuestion()
+  const setQuestionActive = useSetQuestionActive()
+  const deleteQuestion = useDeleteQuestion()
   const [surveyModalOpen, setSurveyModalOpen] = useState(false)
   const [surveyName, setSurveyName] = useState('')
   const [surveyCategory, setSurveyCategory] = useState('Genel')
-  const [selectedSurveyName, setSelectedSurveyName] = useState('')
+  const [selectedSurveyId, setSelectedSurveyId] = useState(0)
   const [editingQuestion, setEditingQuestion] = useState<QuestionDto | null>(null)
   const [editText, setEditText] = useState('')
+  const questionsQuery = useQuestions(isDefinitionsPage ? selectedSurveyId : undefined)
 
   useEffect(() => {
     if (!isDefinitionsPage) return
-    if (selectedSurveyName) return
-    const firstSurveyName = surveysQuery.data?.[0]?.name
-    if (firstSurveyName) setSelectedSurveyName(firstSurveyName)
-  }, [isDefinitionsPage, selectedSurveyName, surveysQuery.data])
-
-  const filteredQuestions = useMemo(() => {
-    const allQuestions = questionsQuery.data ?? []
-    if (!isDefinitionsPage) return allQuestions
-    if (!selectedSurveyName) return []
-    return allQuestions.filter((q) => (q.bolumAdi ?? '').trim() === selectedSurveyName)
-  }, [isDefinitionsPage, questionsQuery.data, selectedSurveyName])
+    if (selectedSurveyId > 0) return
+    const firstSurveyId = Number(surveysQuery.data?.[0]?.id)
+    if (firstSurveyId > 0) setSelectedSurveyId(firstSurveyId)
+  }, [isDefinitionsPage, selectedSurveyId, surveysQuery.data])
 
   const handleCreateSurvey = () => {
     createSurvey.mutate(
@@ -75,6 +75,7 @@ export function QuestionsPage() {
           soruMetni: editText.trim(),
           aktif: editingQuestion.aktif,
           zorunlu: editingQuestion.zorunlu,
+          ...(editingQuestion.kaynak === 'AppDb' ? { baslikId: editingQuestion.baslikId } : {}),
         },
       },
       {
@@ -86,11 +87,44 @@ export function QuestionsPage() {
   const handleSetPassive = (question: QuestionDto) => {
     if (!question.aktif) return
     if (!window.confirm('Bu soruyu pasife almak istediğinize emin misiniz?')) return
-    updateQuestion.mutate({
+    setQuestionActive.mutate({
       id: question.id,
-      payload: { aktif: false },
+      aktif: false,
     })
   }
+
+  const handleDelete = (question: QuestionDto) => {
+    if (question.kaynak !== 'AppDb') return
+    if (!window.confirm('Bu soruyu silmek istediğinize emin misiniz?')) return
+    deleteQuestion.mutate(question.id)
+  }
+
+  const isMutating =
+    updateQuestion.isPending || setQuestionActive.isPending || deleteQuestion.isPending
+
+  const surveySelectOptions = (surveysQuery.data ?? []).map((survey) => ({
+    key: `${survey.kaynak ?? 'unknown'}-${survey.id}`,
+    value: String(survey.id),
+    label: survey.kaynak ? `${survey.name} (${survey.kaynak})` : survey.name,
+  }))
+
+  const currentQuestions =
+    isDefinitionsPage && selectedSurveyId <= 0 ? [] : (questionsQuery.data ?? [])
+
+  const refreshQuestions = () => {
+    void questionsQuery.refetch()
+    if (isDefinitionsPage && selectedSurveyId > 0) {
+      void surveysQuery.refetch()
+    }
+  }
+
+  const getDefinitionsError = () => {
+    if (!isDefinitionsPage) return questionsQuery.error
+    if (selectedSurveyId <= 0) return null
+    return questionsQuery.error
+  }
+
+  const isDefinitionsLoading = isDefinitionsPage && selectedSurveyId > 0 ? questionsQuery.isLoading : false
 
   return (
     <PageContainer>
@@ -116,12 +150,9 @@ export function QuestionsPage() {
           <div className="max-w-md">
             <Select
               label="Anket"
-              value={selectedSurveyName}
-              onChange={(e) => setSelectedSurveyName(e.target.value)}
-              options={(surveysQuery.data ?? []).map((survey) => ({
-                value: survey.name,
-                label: survey.name,
-              }))}
+              value={selectedSurveyId > 0 ? String(selectedSurveyId) : ''}
+              onChange={(e) => setSelectedSurveyId(Number(e.target.value) || 0)}
+              options={surveySelectOptions}
               placeholder="Anket seçin"
             />
           </div>
@@ -130,14 +161,16 @@ export function QuestionsPage() {
 
       <Card>
         <QuestionsTable
-          data={filteredQuestions}
-          isLoading={questionsQuery.isLoading}
-          isError={questionsQuery.isError}
-          error={questionsQuery.error}
-          onRefresh={() => void questionsQuery.refetch()}
+          data={currentQuestions}
+          isLoading={isDefinitionsPage ? isDefinitionsLoading : questionsQuery.isLoading}
+          isError={questionsQuery.isError && Boolean(getDefinitionsError())}
+          error={getDefinitionsError()}
+          onRefresh={refreshQuestions}
           onEdit={openEditModal}
           onSetPassive={handleSetPassive}
-          isUpdating={updateQuestion.isPending}
+          onDelete={handleDelete}
+          isUpdating={isMutating}
+          isDeleting={deleteQuestion.isPending}
         />
       </Card>
 
@@ -146,7 +179,7 @@ export function QuestionsPage() {
           open={surveyModalOpen}
           onClose={() => setSurveyModalOpen(false)}
           title="Yeni Anket Ekle"
-          description="POST /api/surveys — .NET API ile kaydedilir"
+          description="POST /api/AnketBaslik — .NET API ile kaydedilir"
           footer={
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setSurveyModalOpen(false)}>

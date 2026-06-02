@@ -3,10 +3,18 @@ import { queryKeys } from '@/lib/query/query-keys'
 import { questionsApi } from '../api/questions-api'
 import type { CreateQuestionRequest } from '../types/question.types'
 
-export function useQuestions() {
+export function useQuestions(baslikId?: number) {
   return useQuery({
-    queryKey: queryKeys.questions.all,
-    queryFn: () => questionsApi.getAll(),
+    queryKey: queryKeys.questions.all(baslikId),
+    queryFn: () => (baslikId ? questionsApi.getByBaslikId(baslikId) : questionsApi.getAll()),
+    enabled: baslikId === undefined || baslikId > 0,
+  })
+}
+
+export function useAnswerInputTypes() {
+  return useQuery({
+    queryKey: queryKeys.questions.answerInputTypes,
+    queryFn: () => questionsApi.getAnswerInputTypes(),
   })
 }
 
@@ -16,7 +24,7 @@ export function useCreateQuestion() {
   return useMutation({
     mutationFn: (payload: CreateQuestionRequest) => questionsApi.create(payload),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.questions.all })
+      void queryClient.invalidateQueries({ queryKey: ['questions'] })
     },
   })
 }
@@ -28,7 +36,30 @@ export function useUpdateQuestion() {
     mutationFn: ({ id, payload }: { id: string | number; payload: Record<string, unknown> }) =>
       questionsApi.update(id, payload),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.questions.all })
+      void queryClient.invalidateQueries({ queryKey: ['questions'] })
+    },
+  })
+}
+
+export function useSetQuestionActive() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, aktif }: { id: string | number; aktif: boolean }) =>
+      questionsApi.setActive(id, aktif),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['questions'] })
+    },
+  })
+}
+
+export function useDeleteQuestion() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string | number) => questionsApi.delete(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['questions'] })
     },
   })
 }

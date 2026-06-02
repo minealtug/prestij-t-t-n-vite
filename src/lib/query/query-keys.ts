@@ -14,7 +14,8 @@ export const queryKeys = {
     profile: ['settings', 'profile'] as const,
   },
   questions: {
-    all: ['questions'] as const,
+    all: (baslikId?: number) => ['questions', { baslikId: baslikId ?? null }] as const,
+    answerInputTypes: ['questions', 'answer-input-types'] as const,
   },
   surveys: {
     all: ['surveys'] as const,

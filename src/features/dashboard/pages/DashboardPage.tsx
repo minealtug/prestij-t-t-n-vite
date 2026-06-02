@@ -6,7 +6,6 @@ import {
   Activity,
   ClipboardList,
   HelpCircle,
-  Server,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { StatCard } from '@/components/ui/StatCard'
@@ -38,12 +37,7 @@ export function DashboardPage() {
   const questionsQuery = useQuestions()
 
   const summary = summaryQuery.data
-  const apiConnected = summaryQuery.isSuccess
-  const apiStatusLabel = summaryQuery.isLoading
-    ? 'Kontrol…'
-    : apiConnected
-      ? 'Bağlı'
-      : 'Çevrimdışı'
+  const linkedQuestionCount = questionsQuery.data?.filter((question) => question.bagliSoru).length
 
   const kpiCards = summary
     ? [
@@ -112,14 +106,14 @@ export function DashboardPage() {
           }
           icon={Users}
           variant="muted"
-          trend={summary ? undefined : 'Özet API bekleniyor'}
+         
         />
         <StatCard
-          label="API Durumu"
-          value={apiStatusLabel}
-          icon={Server}
-          variant={apiConnected ? 'success' : summaryQuery.isError ? 'warning' : 'muted'}
-          trend={apiConnected ? 'GET /api/dashboard/summary' : '.NET backend'}
+          label="Bağlı Soru"
+          value={displayCount(linkedQuestionCount, questionsQuery.isLoading)}
+          icon={HelpCircle}
+          variant="muted"
+          trend="Toplam bağlı soru sayısı"
         />
       </section>
 

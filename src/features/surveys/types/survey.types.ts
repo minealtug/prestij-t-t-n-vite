@@ -1,8 +1,8 @@
 export interface SurveyDto {
   id: string
   name: string
-  category?: string
-  createdAt?: string
+  aciklama?: string | null
+  kaynak?: 'AppDb' | 'LegacyDb' | string
 }
 
 export interface CreateSurveyRequest {
