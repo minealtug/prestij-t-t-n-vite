@@ -10,6 +10,8 @@ export interface QuestionDto {
   aktif: boolean
   secenekGrupId: number | null
   bagliSoru: boolean
+  bagliOlduguSoruId?: number | null
+  bagliOlduguSoru?: string | { soruMetni?: string | null; [key: string]: unknown } | null
   kaynak?: 'AppDb' | 'LegacyDb' | string
 }
 

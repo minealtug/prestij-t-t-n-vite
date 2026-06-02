@@ -13,16 +13,14 @@ export function ModulePage() {
     <PageContainer>
       <div>
         <h2 className="text-xl font-bold text-foreground">{title}</h2>
-        <p className="text-sm text-muted">
-          Bu modül .NET API bağlandığında aktif olacaktır. Mock veri kullanılmaz.
-        </p>
+      
       </div>
 
       <Card>
         <EmptyState
           icon={Wrench}
           title="Modül hazırlanıyor"
-          description="Endpoint ve ekran detayları backend sözleşmesi netleşince bu alana eklenecek."
+          
         />
       </Card>
     </PageContainer>

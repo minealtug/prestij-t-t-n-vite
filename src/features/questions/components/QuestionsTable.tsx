@@ -5,6 +5,27 @@ import { ErrorState } from '@/components/feedback/ErrorState'
 import type { QuestionDto } from '../types/question.types'
 import { getFriendlyAnswerTypeLabel } from '../utils/answer-type-label'
 
+function getParentQuestionText(value: QuestionDto['bagliOlduguSoru']) {
+  if (typeof value === 'string') {
+    const text = value.trim()
+    return text.length > 0 ? text : null
+  }
+
+  if (value && typeof value === 'object') {
+    const candidates = ['soruMetni', 'metin', 'adi', 'name', 'title']
+
+    for (const key of candidates) {
+      const candidate = value[key]
+      if (typeof candidate === 'string') {
+        const text = candidate.trim()
+        if (text.length > 0) return text
+      }
+    }
+  }
+
+  return null
+}
+
 interface QuestionsTableProps {
   data: QuestionDto[]
   isLoading: boolean
@@ -48,12 +69,6 @@ export function QuestionsTable({
       render: (row) => row.baslikAdi ?? '-',
     },
     {
-      key: 'id',
-      header: 'SORU ID',
-      className: 'w-24',
-      render: (row) => row.id,
-    },
-    {
       key: 'soruMetni',
       header: 'SORU METNİ',
       render: (row) => (
@@ -90,6 +105,25 @@ export function QuestionsTable({
       header: 'BAĞLI',
       className: 'w-24',
       render: (row) => (row.bagliSoru ? 'Evet' : 'Hayır'),
+    },
+    {
+      key: 'bagliOlduguSoru',
+      header: 'BAĞLI OLDUĞU SORU',
+      className: 'w-56',
+      render: (row) => {
+        if (!row.bagliSoru) return '-'
+
+        const parentText = getParentQuestionText(row.bagliOlduguSoru)
+        if (parentText) {
+          return (
+            <span className="block max-w-[260px] truncate" title={parentText}>
+              {parentText}
+            </span>
+          )
+        }
+
+        return row.bagliOlduguSoruId != null ? `#${row.bagliOlduguSoruId}` : '-'
+      },
     },
     {
       key: 'actions',

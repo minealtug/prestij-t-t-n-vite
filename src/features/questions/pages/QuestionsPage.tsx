@@ -159,27 +159,29 @@ export function QuestionsPage() {
         </Card>
       )}
 
-      <Card>
-        <QuestionsTable
-          data={currentQuestions}
-          isLoading={isDefinitionsPage ? isDefinitionsLoading : questionsQuery.isLoading}
-          isError={questionsQuery.isError && Boolean(getDefinitionsError())}
-          error={getDefinitionsError()}
-          onRefresh={refreshQuestions}
-          onEdit={openEditModal}
-          onSetPassive={handleSetPassive}
-          onDelete={handleDelete}
-          isUpdating={isMutating}
-          isDeleting={deleteQuestion.isPending}
-        />
-      </Card>
+      {isDefinitionsPage && (
+        <Card>
+          <QuestionsTable
+            data={currentQuestions}
+            isLoading={isDefinitionsLoading}
+            isError={questionsQuery.isError && Boolean(getDefinitionsError())}
+            error={getDefinitionsError()}
+            onRefresh={refreshQuestions}
+            onEdit={openEditModal}
+            onSetPassive={handleSetPassive}
+            onDelete={handleDelete}
+            isUpdating={isMutating}
+            isDeleting={deleteQuestion.isPending}
+          />
+        </Card>
+      )}
 
       {!isDefinitionsPage && (
         <Modal
           open={surveyModalOpen}
           onClose={() => setSurveyModalOpen(false)}
           title="Yeni Anket Ekle"
-          description="POST /api/AnketBaslik — .NET API ile kaydedilir"
+         
           footer={
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setSurveyModalOpen(false)}>
@@ -204,12 +206,7 @@ export function QuestionsPage() {
               placeholder="Anket adı"
               required
             />
-            <Select
-              label="Kategori"
-              value={surveyCategory}
-              onChange={(e) => setSurveyCategory(e.target.value)}
-              options={CATEGORY_OPTIONS}
-            />
+          
             {createSurvey.isError && (
               <p className="text-sm text-red-600" role="alert">
                 {getErrorMessage(createSurvey.error)}
