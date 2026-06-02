@@ -4,6 +4,20 @@ import { isDevAuthEnabled } from '@/features/auth/dev/dev-auth'
 import { devSurveysStore } from '../dev/dev-surveys-store'
 import type { CreateSurveyRequest, SurveyDto } from '../types/survey.types'
 
+interface LegacySurveyDto {
+  id: string | number
+  adi?: string | null
+  aciklama?: string | null
+  kaynak?: string | null
+}
+
+function mapLegacySurvey(item: LegacySurveyDto): SurveyDto {
+  return {
+    id: String(item.id),
+    name: item.adi?.trim() || '-',
+  }
+}
+
 function isNetworkError(error: unknown): boolean {
   return (
     typeof error === 'object' &&
@@ -27,13 +41,21 @@ async function withDevFallback<T>(apiCall: () => Promise<T>, devCall: () => T): 
 export const surveysApi = {
   getAll: () =>
     withDevFallback(
-      () => apiClient.get<SurveyDto[]>('/api/AnketBaslik'),
+      async () => {
+        const items = await apiClient.get<LegacySurveyDto[]>('/api/AnketBaslik')
+        return items.map(mapLegacySurvey)
+      },
       () => devSurveysStore.getAll(),
     ),
 
   create: (payload: CreateSurveyRequest) =>
     withDevFallback(
-      () => apiClient.post<SurveyDto>('/surveys', payload),
+      async () => {
+        const created = await apiClient.post<LegacySurveyDto>('/api/AnketBaslik', {
+          adi: payload.name,
+        })
+        return mapLegacySurvey(created)
+      },
       () => devSurveysStore.create(payload),
     ),
 

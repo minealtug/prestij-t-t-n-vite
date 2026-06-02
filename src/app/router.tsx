@@ -31,6 +31,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <DashboardPage /> },
           { path: 'soru-yonetimi', element: <QuestionsPage /> },
+          { path: 'tanimlamalar/soru-tanimlamalari', element: <QuestionsPage /> },
           { path: 'anket-yonetimi', element: <SurveysPage /> },
           { path: 'anket-cevaplari', element: <SurveyResponsesPage /> },
           { path: 'raporlar', element: <ModulePage /> },

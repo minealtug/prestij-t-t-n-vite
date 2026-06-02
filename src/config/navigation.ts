@@ -11,10 +11,11 @@ import {
 } from 'lucide-react'
 
 export interface NavItem {
-  to: string
+  to?: string
   label: string
   icon: LucideIcon
   end?: boolean
+  children?: NavItem[]
 }
 
 export interface NavSection {
@@ -30,7 +31,11 @@ export const sidebarSections: NavSection[] = [
       { to: '/anket-yonetimi', label: 'Anket Yönetimi', icon: ClipboardList },
       { to: '/anket-cevaplari', label: 'Anket Cevapları', icon: MessageSquareReply },
       { to: '/raporlar', label: 'Raporlar', icon: BarChart3 },
-      { to: '/tanimlamalar', label: 'Tanımlamalar', icon: BookMarked },
+      {
+        label: 'Tanımlamalar',
+        icon: BookMarked,
+        children: [{ to: '/tanimlamalar/soru-tanimlamalari', label: 'Soru Tanımlamaları', icon: FileQuestion }],
+      },
     ],
   },
   {
@@ -49,6 +54,7 @@ export const pageTitles: Record<string, string> = {
   '/anket-cevaplari': 'Anket Cevapları',
   '/raporlar': 'Raporlar',
   '/tanimlamalar': 'Tanımlamalar',
+  '/tanimlamalar/soru-tanimlamalari': 'Soru Tanımlamaları',
   '/yetkilendirme': 'Yetkilendirme',
   '/users': 'Kullanıcılar',
   '/settings': 'Ayarlar',

@@ -1,10 +1,9 @@
 import { useState, type FormEvent } from 'react'
-import { Plus, Info } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Card } from '@/components/ui/Card'
 import { getErrorMessage } from '@/lib/api/api-error'
-import { isDevAuthEnabled } from '@/features/auth/dev/dev-auth'
 import { SurveysTable } from '../components/SurveysTable'
 import { useCreateSurvey, useDeleteSurvey, useSurveys } from '../hooks/use-surveys'
 import { PageContainer } from '@/components/layout/PageContainer'
@@ -38,6 +37,21 @@ export function SurveysPage() {
   return (
     <PageContainer>
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        <div className="xl:col-span-8">
+          <Card className="h-full">
+            <SurveysTable
+              data={surveysQuery.data ?? []}
+              isLoading={surveysQuery.isLoading}
+              isError={surveysQuery.isError}
+              error={surveysQuery.error}
+              count={surveyCount}
+              onRefresh={() => void surveysQuery.refetch()}
+              onDelete={handleDelete}
+              isDeleting={deleteSurvey.isPending}
+            />
+          </Card>
+        </div>
+
         <div className="xl:col-span-4">
           <Card className="h-full border-primary-500/15">
             <form onSubmit={handleSubmit}>
@@ -80,31 +94,8 @@ export function SurveysPage() {
                   </p>
                 )}
 
-                {isDevAuthEnabled() && (
-                  <div className="flex gap-2 rounded-lg border border-accent-500/30 bg-accent-500/10 px-3 py-2.5">
-                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-accent-600" />
-                    <p className="text-xs leading-relaxed text-muted">
-                      Geliştirme modu: API kapalıyken anketler tarayıcıda geçici saklanır.
-                    </p>
-                  </div>
-                )}
               </div>
             </form>
-          </Card>
-        </div>
-
-        <div className="xl:col-span-8">
-          <Card className="h-full">
-            <SurveysTable
-              data={surveysQuery.data ?? []}
-              isLoading={surveysQuery.isLoading}
-              isError={surveysQuery.isError}
-              error={surveysQuery.error}
-              count={surveyCount}
-              onRefresh={() => void surveysQuery.refetch()}
-              onDelete={handleDelete}
-              isDeleting={deleteSurvey.isPending}
-            />
           </Card>
         </div>
       </div>

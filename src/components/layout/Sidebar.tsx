@@ -1,5 +1,6 @@
-import { NavLink } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { useState } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
+import { ChevronLeft, ChevronRight, ChevronDown, X } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { useUiStore } from '@/stores/ui-store'
 import { sidebarSections } from '@/config/navigation'
@@ -7,6 +8,8 @@ import { sidebarSections } from '@/config/navigation'
 export function Sidebar() {
   const { sidebarCollapsed, mobileSidebarOpen, toggleSidebar, setMobileSidebarOpen } =
     useUiStore()
+  const location = useLocation()
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ Tanımlamalar: true })
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
@@ -59,20 +62,77 @@ export function Sidebar() {
               <div className="mb-2 border-t border-white/10" aria-hidden />
             )}
             <ul className="space-y-1">
-              {section.items.map(({ to, label, icon: Icon, end }) => (
-                <li key={to}>
-                  <NavLink
-                    to={to}
-                    end={end}
-                    onClick={() => setMobileSidebarOpen(false)}
-                    className={linkClass}
-                    title={sidebarCollapsed ? label : undefined}
-                  >
-                    <Icon className="h-5 w-5 shrink-0" />
-                    {!sidebarCollapsed && <span>{label}</span>}
-                  </NavLink>
-                </li>
-              ))}
+              {section.items.map(({ to, label, icon: Icon, end, children }) => {
+                if (children?.length) {
+                  const isChildActive = children.some((child) =>
+                    child.to ? location.pathname.startsWith(child.to) : false,
+                  )
+                  const isOpen = openGroups[label] ?? isChildActive
+
+                  return (
+                    <li key={label}>
+                      <button
+                        type="button"
+                        onClick={() => setOpenGroups((prev) => ({ ...prev, [label]: !isOpen }))}
+                        className={cn(
+                          linkClass({ isActive: isChildActive }),
+                          'w-full',
+                          !sidebarCollapsed && 'justify-between',
+                        )}
+                        title={sidebarCollapsed ? label : undefined}
+                      >
+                        <span className="flex items-center gap-3">
+                          <Icon className="h-5 w-5 shrink-0" />
+                          {!sidebarCollapsed && <span>{label}</span>}
+                        </span>
+                        {!sidebarCollapsed && (
+                          <ChevronDown
+                            className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-180')}
+                          />
+                        )}
+                      </button>
+                      {!sidebarCollapsed && isOpen && (
+                        <ul className="mt-1 space-y-1 pl-4">
+                          {children.map((child) => (
+                            <li key={child.to ?? child.label}>
+                              <NavLink
+                                to={child.to ?? '/'}
+                                onClick={() => setMobileSidebarOpen(false)}
+                                className={({ isActive }) =>
+                                  cn(
+                                    'flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors',
+                                    isActive
+                                      ? 'bg-white/10 text-white'
+                                      : 'text-white/70 hover:bg-white/10 hover:text-white',
+                                  )
+                                }
+                              >
+                                <child.icon className="h-4 w-4 shrink-0" />
+                                <span>{child.label}</span>
+                              </NavLink>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  )
+                }
+
+                return (
+                  <li key={to ?? label}>
+                    <NavLink
+                      to={to ?? '/'}
+                      end={end}
+                      onClick={() => setMobileSidebarOpen(false)}
+                      className={linkClass}
+                      title={sidebarCollapsed ? label : undefined}
+                    >
+                      <Icon className="h-5 w-5 shrink-0" />
+                      {!sidebarCollapsed && <span>{label}</span>}
+                    </NavLink>
+                  </li>
+                )
+              })}
             </ul>
           </div>
         ))}

@@ -20,3 +20,15 @@ export function useCreateQuestion() {
     },
   })
 }
+
+export function useUpdateQuestion() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateQuestionRequest> }) =>
+      questionsApi.update(id, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.questions.all })
+    },
+  })
+}
