@@ -1,28 +1,15 @@
+import { useMemo, useState } from 'react'
 import {
-  Users,
-  UserCheck,
-  TrendingUp,
-  Banknote,
-  Activity,
   ClipboardList,
   HelpCircle,
+  FileQuestion,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { StatCard } from '@/components/ui/StatCard'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { QueryBoundary } from '@/components/feedback/QueryBoundary'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { useSurveys } from '@/features/surveys/hooks/use-surveys'
 import { useQuestions } from '@/features/questions/hooks/use-questions'
-import { useDashboardActivity, useDashboardSummary } from '../hooks/use-dashboard'
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('tr-TR', {
-    style: 'currency',
-    currency: 'TRY',
-    maximumFractionDigits: 0,
-  }).format(value)
-}
 
 function displayCount(value: number | undefined, loading: boolean) {
   if (loading) return '…'
@@ -31,55 +18,45 @@ function displayCount(value: number | undefined, loading: boolean) {
 }
 
 export function DashboardPage() {
-  const summaryQuery = useDashboardSummary()
-  const activityQuery = useDashboardActivity()
+  const [activityPage, setActivityPage] = useState(1)
+  const activityPageSize = 4
   const surveysQuery = useSurveys()
   const questionsQuery = useQuestions()
 
-  const summary = summaryQuery.data
   const linkedQuestionCount = questionsQuery.data?.filter((question) => question.bagliSoru).length
-
-  const kpiCards = summary
-    ? [
-        {
-          title: 'Toplam Kullanıcı',
-          value: summary.totalUsers.toLocaleString('tr-TR'),
-          icon: Users,
-          accent: false,
-        },
-        {
-          title: 'Aktif Kullanıcı',
-          value: summary.activeUsers.toLocaleString('tr-TR'),
-          icon: UserCheck,
-          accent: true,
-        },
-        {
-          title: 'Gelir',
-          value: formatCurrency(summary.revenue),
-          icon: Banknote,
-          accent: false,
-        },
-        {
-          title: 'Büyüme',
-          value: `%${summary.growthPercent}`,
-          icon: TrendingUp,
-          accent: true,
-        },
-      ]
-    : []
+  const recentItems = [
+    ...(surveysQuery.data ?? []).slice(0, 3).map((survey) => ({
+      id: `survey-${survey.id}`,
+      type: 'survey' as const,
+      action: 'Anket Eklendi',
+      description: `"${survey.name}" anketi tanımlandı.`,
+      source: survey.kaynak ?? 'Bilinmiyor',
+    })),
+    ...(questionsQuery.data ?? []).slice(0, 5).map((question) => ({
+      id: `question-${question.id}`,
+      type: 'question' as const,
+      action: 'Soru Eklendi',
+      description: question.soruMetni,
+      source: question.kaynak ?? 'Bilinmiyor',
+    })),
+  ].slice(0, 8)
+  const totalActivityPages = Math.max(1, Math.ceil(recentItems.length / activityPageSize))
+  const pagedRecentItems = useMemo(() => {
+    const safePage = Math.min(activityPage, totalActivityPages)
+    const start = (safePage - 1) * activityPageSize
+    return recentItems.slice(start, start + activityPageSize)
+  }, [activityPage, recentItems, totalActivityPages])
 
   return (
     <PageContainer>
       <section className="gradient-brand rounded-2xl px-6 py-5 shadow-lg md:px-8 md:py-6">
         <p className="text-xs font-medium uppercase tracking-wider text-white/75">
-          Kurumsal özet
+          Dashboard Özeti
         </p>
         <h1 className="mt-1 text-xl font-semibold tracking-tight text-white md:text-2xl">
           Ana Sayfa
         </h1>
-        <p className="mt-2 max-w-lg text-sm leading-relaxed text-white/80">
-          Operasyonel metrikler ve son aktiviteler .NET API üzerinden yüklenir.
-        </p>
+       
       </section>
 
       <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -96,17 +73,10 @@ export function DashboardPage() {
           variant="default"
         />
         <StatCard
-          label="Kullanıcı"
-          value={
-            summary
-              ? summary.totalUsers.toLocaleString('tr-TR')
-              : summaryQuery.isLoading
-                ? '…'
-                : '—'
-          }
-          icon={Users}
+          label="Son İşlem"
+          value={displayCount(recentItems.length, surveysQuery.isLoading || questionsQuery.isLoading)}
+          icon={FileQuestion}
           variant="muted"
-         
         />
         <StatCard
           label="Bağlı Soru"
@@ -117,66 +87,84 @@ export function DashboardPage() {
         />
       </section>
 
-      <section className="section-stack">
-        <QueryBoundary
-          query={summaryQuery}
-          loadingVariant="skeleton-stats"
-          errorTitle="Özet alınamadı"
-          errorVariant="compact"
-        >
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {kpiCards.map(({ title, value, icon: Icon, accent }) => (
-              <Card key={title} accent={accent} className="relative overflow-hidden">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm text-muted">{title}</p>
-                    <p className="mt-2 text-2xl font-bold text-foreground">{value}</p>
-                  </div>
+      <Card
+        title="Son Yapılan İşlemler"
+        description="En son eklenen anket ve soru kayıtları"
+        accent
+      >
+        {surveysQuery.isLoading || questionsQuery.isLoading ? (
+          <p className="text-sm text-muted">Veriler yükleniyor…</p>
+        ) : recentItems.length > 0 ? (
+          <div className="space-y-4">
+            <ul className="space-y-3">
+              {pagedRecentItems.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex items-start gap-4 rounded-xl border border-border/80 bg-surface-elevated/70 px-4 py-3"
+                >
                   <div
-                    className={`rounded-lg p-2 ${accent ? 'bg-accent-500/20 text-accent-600' : 'bg-primary-500/10 text-primary-600'}`}
+                    className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                      item.type === 'survey'
+                        ? 'bg-primary-500/10 text-primary-600'
+                        : 'bg-accent-500/15 text-accent-600'
+                    }`}
                   >
-                    <Icon className="h-5 w-5" />
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </QueryBoundary>
-      </section>
-
-      <Card title="Son aktiviteler" description="GET /api/dashboard/activity" accent>
-        <QueryBoundary
-          query={activityQuery}
-          loadingVariant="skeleton-activity"
-          errorTitle="Aktiviteler alınamadı"
-          errorVariant="compact"
-        >
-          {activityQuery.data && activityQuery.data.length > 0 ? (
-            <ul className="divide-y divide-border">
-              {activityQuery.data.map((item) => (
-                <li key={item.id} className="flex gap-4 py-4 first:pt-0 last:pb-0">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-500/10 text-primary-600">
-                    <Activity className="h-5 w-5" />
+                    {item.type === 'survey' ? (
+                      <ClipboardList className="h-5 w-5" />
+                    ) : (
+                      <FileQuestion className="h-5 w-5" />
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-foreground">{item.title}</p>
-                    <p className="text-sm text-muted">{item.description}</p>
-                    <p className="mt-1 text-xs text-muted">
-                      {new Date(item.createdAt).toLocaleString('tr-TR')}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-foreground">{item.action}</p>
+                      <span className="rounded-full bg-foreground/5 px-2 py-0.5 text-[11px] font-medium text-muted">
+                        {item.type === 'survey' ? 'Anket' : 'Soru'}
+                      </span>
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-sm text-muted">{item.description}</p>
+                    <p className="mt-1 text-xs text-muted">Kaynak: {item.source}</p>
                   </div>
                 </li>
               ))}
             </ul>
-          ) : (
-            <EmptyState
-              compact
-              icon={Activity}
-              title="Henüz aktivite yok"
-              description="API bağlandığında son işlemler burada listelenecek."
-            />
-          )}
-        </QueryBoundary>
+
+            {totalActivityPages > 1 && (
+              <div className="flex items-center justify-between border-t border-border pt-3">
+                <p className="text-xs text-muted">
+                  Sayfa {Math.min(activityPage, totalActivityPages)} / {totalActivityPages}
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="rounded-lg border border-border px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => setActivityPage((prev) => Math.max(1, prev - 1))}
+                    disabled={activityPage <= 1}
+                  >
+                    Önceki
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-lg border border-border px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() =>
+                      setActivityPage((prev) => Math.min(totalActivityPages, prev + 1))
+                    }
+                    disabled={activityPage >= totalActivityPages}
+                  >
+                    Sonraki
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <EmptyState
+            compact
+            icon={HelpCircle}
+            title="Henüz kayıt yok"
+            description="Anket ve soru eklendiğinde burada listelenecek."
+          />
+        )}
       </Card>
     </PageContainer>
   )

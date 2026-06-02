@@ -6,8 +6,14 @@ import { Textarea } from '@/components/ui/Textarea'
 import { Card } from '@/components/ui/Card'
 import { getErrorMessage } from '@/lib/api/api-error'
 import { useSurveys } from '@/features/surveys/hooks/use-surveys'
-import { useAnswerInputTypes, useCreateQuestion } from '../hooks/use-questions'
-import type { CreateQuestionRequest } from '../types/question.types'
+import {
+  useAnswerInputTypes,
+  useCreateLinkedQuestionWithMigrate,
+  useCreateQuestion,
+  useQuestions,
+} from '../hooks/use-questions'
+import type { CreateQuestionRequest, LinkedQuestionMigrateResultDto } from '../types/question.types'
+import { getFriendlyAnswerTypeLabel } from '../utils/answer-type-label'
 
 const defaultForm = {
   baslikId: '',
@@ -20,38 +26,61 @@ const defaultForm = {
 
 export function QuestionForm() {
   const createQuestion = useCreateQuestion()
+  const createLinkedQuestionWithMigrate = useCreateLinkedQuestionWithMigrate()
   const surveysQuery = useSurveys()
   const answerInputTypesQuery = useAnswerInputTypes()
   const [form, setForm] = useState(defaultForm)
+  const [parentQuestionId, setParentQuestionId] = useState('')
   const [formError, setFormError] = useState('')
+  const [linkedMigrateResult, setLinkedMigrateResult] = useState<LinkedQuestionMigrateResultDto | null>(null)
+  const selectedBaslikId = Number(form.baslikId)
+  const questionsBySurveyQuery = useQuestions(selectedBaslikId > 0 ? selectedBaslikId : undefined)
   const surveyOptions = useMemo(
     () =>
       (surveysQuery.data ?? []).map((survey) => ({
         key: `${survey.kaynak ?? 'unknown'}-${survey.id}`,
         value: String(survey.id),
-        label: survey.kaynak ? `${survey.name} (${survey.kaynak})` : survey.name,
+        label: survey.name,
       })),
     [surveysQuery.data],
   )
   const cevapTipiOptions = useMemo(
-    () => [
-      { value: '', label: 'Cevap tipi seçin' },
-      ...(answerInputTypesQuery.data ?? [])
-        .slice()
+    () => {
+      const options = (answerInputTypesQuery.data ?? [])
         .sort((a, b) => a.siraNo - b.siraNo)
-        .map((item) => ({ value: String(item.id), label: item.adi })),
-    ],
+        .map((item) => {
+          const friendly = getFriendlyAnswerTypeLabel(item.adi)
+          return {
+            value: String(item.id),
+            label: friendly === item.adi ? friendly : `${friendly} (${item.adi})`,
+          }
+        })
+
+      return [{ value: '', label: 'Cevap tipi seçin' }, ...options]
+    },
     [answerInputTypesQuery.data],
+  )
+  const parentQuestionOptions = useMemo(
+    () => [
+      { value: '', label: 'Parent soru seçin' },
+      ...(questionsBySurveyQuery.data ?? []).map((question) => ({
+        value: String(question.id),
+        label: `[${question.kaynak ?? 'Bilinmiyor'}] #${question.id} - ${question.soruMetni}`,
+      })),
+    ],
+    [questionsBySurveyQuery.data],
   )
 
   const resetForm = () => {
     setForm(defaultForm)
+    setParentQuestionId('')
     setFormError('')
   }
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
     setFormError('')
+    setLinkedMigrateResult(null)
 
     const baslikId = Number(form.baslikId)
     const cevapGirdiTipId = Number(form.cevapGirdiTipId)
@@ -67,6 +96,11 @@ export function QuestionForm() {
       setFormError('Soru metni boş olamaz.')
       return
     }
+    const parsedParentQuestionId = Number(parentQuestionId)
+    if (form.bagliSoru && (!Number.isFinite(parsedParentQuestionId) || parsedParentQuestionId <= 0)) {
+      setFormError('Bağlı soru için parent soru seçmelisiniz.')
+      return
+    }
 
     const payload: CreateQuestionRequest = {
       baslikId,
@@ -76,12 +110,28 @@ export function QuestionForm() {
       aktif: form.aktif,
       bagliSoru: form.bagliSoru,
     }
-    createQuestion.mutate(
-      payload,
-      {
-        onSuccess: () => resetForm(),
-      },
+    const selectedParentQuestion = (questionsBySurveyQuery.data ?? []).find(
+      (question) => String(question.id) === parentQuestionId,
     )
+    if (form.bagliSoru && selectedParentQuestion?.kaynak === 'LegacyDb') {
+      createLinkedQuestionWithMigrate.mutate(
+        {
+          ...payload,
+          parentLegacyQuestionId: parsedParentQuestionId,
+        },
+        {
+          onSuccess: (result) => {
+            setLinkedMigrateResult(result)
+            resetForm()
+          },
+        },
+      )
+      return
+    }
+
+    createQuestion.mutate(payload, {
+      onSuccess: () => resetForm(),
+    })
   }
 
   return (
@@ -95,7 +145,11 @@ export function QuestionForm() {
           <Select
             label="Anket Başlığı"
             value={form.baslikId}
-            onChange={(e) => setForm((f) => ({ ...f, baslikId: e.target.value }))}
+            onChange={(e) => {
+              setForm((f) => ({ ...f, baslikId: e.target.value }))
+              setParentQuestionId('')
+              setLinkedMigrateResult(null)
+            }}
             options={surveyOptions}
             required
           />
@@ -140,15 +194,32 @@ export function QuestionForm() {
           <input
             type="checkbox"
             checked={form.bagliSoru}
-            onChange={(e) => setForm((f) => ({ ...f, bagliSoru: e.target.checked }))}
+            onChange={(e) => {
+              const checked = e.target.checked
+              setForm((f) => ({ ...f, bagliSoru: checked }))
+              if (!checked) {
+                setParentQuestionId('')
+                setLinkedMigrateResult(null)
+              }
+            }}
             className="h-4 w-4 rounded border-border text-primary-500 focus:ring-primary-500"
           />
           <span className="text-sm text-foreground">Bağlı Soru</span>
         </label>
+        {form.bagliSoru && (
+          <Select
+            label="Parent Soru (Legacy/App)"
+            value={parentQuestionId}
+            onChange={(e) => setParentQuestionId(e.target.value)}
+            options={parentQuestionOptions}
+            disabled={!form.baslikId || questionsBySurveyQuery.isLoading}
+            required
+          />
+        )}
 
-        {createQuestion.isError && (
+        {(createQuestion.isError || createLinkedQuestionWithMigrate.isError) && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-            {getErrorMessage(createQuestion.error)}
+            {getErrorMessage(createQuestion.error ?? createLinkedQuestionWithMigrate.error)}
           </p>
         )}
         {formError && (
@@ -165,9 +236,19 @@ export function QuestionForm() {
         {createQuestion.isSuccess && (
           <p className="text-sm text-primary-600">Soru kaydedildi.</p>
         )}
+        {linkedMigrateResult && (
+          <p className="text-sm text-primary-600">
+            Bağlı soru migrate edilerek kaydedildi. Kaynak: {linkedMigrateResult.kaynak ?? 'AppDb'}.
+            Yeni Parent ID: {linkedMigrateResult.parentNewQuestionId}, Yeni Bağlı Soru ID:{' '}
+            {linkedMigrateResult.newLinkedQuestionId}
+          </p>
+        )}
 
         <div className="flex flex-wrap gap-3 border-t border-border pt-4">
-          <Button type="submit" loading={createQuestion.isPending}>
+          <Button
+            type="submit"
+            loading={createQuestion.isPending || createLinkedQuestionWithMigrate.isPending}
+          >
             <Save className="h-4 w-4" />
             Hemen Kaydet
           </Button>

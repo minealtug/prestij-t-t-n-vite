@@ -30,3 +30,14 @@ export interface CreateQuestionRequest {
   secenekGrupId?: number
   bagliSoru: boolean
 }
+
+export interface CreateLinkedQuestionWithMigrateRequest extends CreateQuestionRequest {
+  parentLegacyQuestionId: number
+}
+
+export interface LinkedQuestionMigrateResultDto {
+  kaynak?: 'AppDb' | 'LegacyDb' | string
+  parentLegacyQuestionId: number
+  parentNewQuestionId: number
+  newLinkedQuestionId: number
+}

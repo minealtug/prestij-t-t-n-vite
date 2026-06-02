@@ -105,7 +105,7 @@ export function QuestionsPage() {
   const surveySelectOptions = (surveysQuery.data ?? []).map((survey) => ({
     key: `${survey.kaynak ?? 'unknown'}-${survey.id}`,
     value: String(survey.id),
-    label: survey.kaynak ? `${survey.name} (${survey.kaynak})` : survey.name,
+    label: survey.name,
   }))
 
   const currentQuestions =
@@ -131,7 +131,7 @@ export function QuestionsPage() {
       {!isDefinitionsPage && (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-bold text-foreground">Soru Yönetimi</h2>
+            <h2 className="text-xl font-bold text-foreground">Soru Ekleme</h2>
             <p className="text-sm text-muted">Anket sorularını oluşturun ve yönetin</p>
           </div>
           <div className="flex flex-wrap gap-2">

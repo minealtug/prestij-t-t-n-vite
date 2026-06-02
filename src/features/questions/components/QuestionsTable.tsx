@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/Button'
 import { Table, type TableColumn } from '@/components/ui/Table'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import type { QuestionDto } from '../types/question.types'
+import { getFriendlyAnswerTypeLabel } from '../utils/answer-type-label'
 
 interface QuestionsTableProps {
   data: QuestionDto[]
@@ -64,8 +65,19 @@ export function QuestionsTable({
     {
       key: 'cevapGirdiTipAdi',
       header: 'CEVAP TİPİ',
-      className: 'w-28',
-      render: (row) => row.cevapGirdiTipAdi ?? (row.cevapGirdiTipId != null ? row.cevapGirdiTipId : '-'),
+      className: 'w-36',
+      render: (row) => {
+        if (!row.cevapGirdiTipAdi) return row.cevapGirdiTipId != null ? row.cevapGirdiTipId : '-'
+        const friendly = getFriendlyAnswerTypeLabel(row.cevapGirdiTipAdi)
+        const label =
+          friendly === row.cevapGirdiTipAdi ? friendly : `${friendly} (${row.cevapGirdiTipAdi})`
+
+        return (
+          <span className="block max-w-[200px] truncate" title={label}>
+            {label}
+          </span>
+        )
+      },
     },
     {
       key: 'zorunlu',
