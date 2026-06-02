@@ -27,7 +27,7 @@ async function withDevFallback<T>(apiCall: () => Promise<T>, devCall: () => T): 
 export const surveysApi = {
   getAll: () =>
     withDevFallback(
-      () => apiClient.get<SurveyDto[]>('/surveys'),
+      () => apiClient.get<SurveyDto[]>('/api/AnketBaslik'),
       () => devSurveysStore.getAll(),
     ),
 
