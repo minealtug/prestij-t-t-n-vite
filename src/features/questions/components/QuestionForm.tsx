@@ -62,7 +62,7 @@ export function QuestionForm() {
   )
   const parentQuestionOptions = useMemo(
     () => [
-      { value: '', label: 'Parent soru seçin' },
+      { value: '', label: 'Bağlı olunacak soru seçin' },
       ...(questionsBySurveyQuery.data ?? []).map((question) => ({
         value: String(question.id),
         label: `[${question.kaynak ?? 'Bilinmiyor'}] #${question.id} - ${question.soruMetni}`,
@@ -208,7 +208,7 @@ export function QuestionForm() {
         </label>
         {form.bagliSoru && (
           <Select
-            label="Parent Soru (Legacy/App)"
+            label="Bağlı olunacak soru"
             value={parentQuestionId}
             onChange={(e) => setParentQuestionId(e.target.value)}
             options={parentQuestionOptions}
