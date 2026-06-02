@@ -25,23 +25,23 @@ export function QuestionsPage() {
   const [surveyModalOpen, setSurveyModalOpen] = useState(false)
   const [surveyName, setSurveyName] = useState('')
   const [surveyCategory, setSurveyCategory] = useState('Genel')
-  const [selectedSurveyId, setSelectedSurveyId] = useState('')
+  const [selectedSurveyName, setSelectedSurveyName] = useState('')
   const [editingQuestion, setEditingQuestion] = useState<QuestionDto | null>(null)
   const [editText, setEditText] = useState('')
 
   useEffect(() => {
     if (!isDefinitionsPage) return
-    if (selectedSurveyId) return
-    const firstSurveyId = surveysQuery.data?.[0]?.id
-    if (firstSurveyId) setSelectedSurveyId(String(firstSurveyId))
-  }, [isDefinitionsPage, selectedSurveyId, surveysQuery.data])
+    if (selectedSurveyName) return
+    const firstSurveyName = surveysQuery.data?.[0]?.name
+    if (firstSurveyName) setSelectedSurveyName(firstSurveyName)
+  }, [isDefinitionsPage, selectedSurveyName, surveysQuery.data])
 
   const filteredQuestions = useMemo(() => {
     const allQuestions = questionsQuery.data ?? []
     if (!isDefinitionsPage) return allQuestions
-    if (!selectedSurveyId) return []
-    return allQuestions.filter((q) => String(q.bolumId) === selectedSurveyId)
-  }, [isDefinitionsPage, questionsQuery.data, selectedSurveyId])
+    if (!selectedSurveyName) return []
+    return allQuestions.filter((q) => (q.bolumAdi ?? '').trim() === selectedSurveyName)
+  }, [isDefinitionsPage, questionsQuery.data, selectedSurveyName])
 
   const handleCreateSurvey = () => {
     createSurvey.mutate(
@@ -116,10 +116,10 @@ export function QuestionsPage() {
           <div className="max-w-md">
             <Select
               label="Anket"
-              value={selectedSurveyId}
-              onChange={(e) => setSelectedSurveyId(e.target.value)}
+              value={selectedSurveyName}
+              onChange={(e) => setSelectedSurveyName(e.target.value)}
               options={(surveysQuery.data ?? []).map((survey) => ({
-                value: String(survey.id),
+                value: survey.name,
                 label: survey.name,
               }))}
               placeholder="Anket seçin"

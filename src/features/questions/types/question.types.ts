@@ -15,8 +15,10 @@ export interface VisibilityRule {
 
 export interface QuestionDto {
   id: string | number
-  bolumId: number
-  cevapGirdiTipId: number
+  bolumAdi?: string
+  bolumId?: number
+  cevapGirdiTipAdi?: string
+  cevapGirdiTipId?: number
   soruMetni: string
   altSoruMetni: string | null
   zorunlu: boolean

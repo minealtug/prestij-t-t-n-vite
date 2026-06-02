@@ -37,10 +37,10 @@ export function QuestionsTable({
       ),
     },
     {
-      key: 'bolumId',
+      key: 'bolumAdi',
       header: 'BÖLÜM',
       className: 'w-24',
-      render: (row) => row.bolumId,
+      render: (row) => row.bolumAdi ?? (row.bolumId != null ? String(row.bolumId) : '-'),
     },
     {
       key: 'id',
@@ -58,10 +58,10 @@ export function QuestionsTable({
       ),
     },
     {
-      key: 'cevapGirdiTipId',
+      key: 'cevapGirdiTipAdi',
       header: 'CEVAP TİPİ',
       className: 'w-28',
-      render: (row) => row.cevapGirdiTipId,
+      render: (row) => row.cevapGirdiTipAdi ?? (row.cevapGirdiTipId != null ? row.cevapGirdiTipId : '-'),
     },
     {
       key: 'zorunlu',
