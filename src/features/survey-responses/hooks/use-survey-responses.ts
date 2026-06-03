@@ -6,6 +6,7 @@ import type { SurveyResponsesQueryParams } from '../types/survey-response.types'
 export function useSurveyResponses(params?: SurveyResponsesQueryParams) {
   return useQuery({
     queryKey: queryKeys.surveyResponses.all(params),
-    queryFn: () => surveyResponsesApi.getAll(params),
+    queryFn: () => surveyResponsesApi.getByEkici(params ?? {}),
+    enabled: Boolean(params?.ekiciId),
   })
 }

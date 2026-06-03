@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/Button'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { Skeleton } from '@/components/feedback/Skeleton'
-import type { SurveyResponseDto } from '../types/survey-response.types'
+import type { SurveyResponseGroup } from '../types/survey-response.types'
 
 interface SurveyResponsesTableProps {
-  data: SurveyResponseDto[]
+  data: SurveyResponseGroup[]
   isLoading: boolean
   isError: boolean
   error: unknown
@@ -16,13 +16,13 @@ interface SurveyResponsesTableProps {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleString('tr-TR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  const d = new Date(iso)
+  const dateOnly = d.getHours() === 0 && d.getMinutes() === 0 && d.getSeconds() === 0
+  const dateOpts = { day: '2-digit', month: '2-digit', year: 'numeric' } as const
+  if (dateOnly) {
+    return d.toLocaleDateString('tr-TR', dateOpts)
+  }
+  return d.toLocaleString('tr-TR', { ...dateOpts, hour: '2-digit', minute: '2-digit' })
 }
 
 export function SurveyResponsesTable({
@@ -75,8 +75,8 @@ export function SurveyResponsesTable({
               <tr className="border-b border-border bg-primary-500/5">
                 <th className="w-10 px-3 py-3" aria-hidden />
                 <th className="px-4 py-3 font-semibold text-foreground">TARİH</th>
-                <th className="px-4 py-3 font-semibold text-foreground">KULLANICI</th>
-                <th className="px-4 py-3 font-semibold text-foreground">ADI SOYADI</th>
+                <th className="px-4 py-3 font-semibold text-foreground">EKİCİ</th>
+                <th className="px-4 py-3 font-semibold text-foreground">MINTİKA</th>
                 <th className="px-4 py-3 font-semibold text-foreground">ANKET</th>
                 <th className="px-4 py-3 font-semibold text-foreground">DETAY</th>
               </tr>
@@ -123,8 +123,8 @@ export function SurveyResponsesTable({
                         <td className="px-4 py-3 whitespace-nowrap text-foreground">
                           {formatDate(row.submittedAt)}
                         </td>
-                        <td className="px-4 py-3 font-medium text-foreground">{row.username}</td>
                         <td className="px-4 py-3 text-foreground">{row.fullName}</td>
+                        <td className="px-4 py-3 text-foreground">{row.mintikaAdi}</td>
                         <td className="px-4 py-3 text-foreground">{row.surveyName}</td>
                         <td className="px-4 py-3">
                           <span className="rounded-full bg-accent-500/20 px-2.5 py-0.5 text-xs font-medium text-primary-800">

@@ -21,6 +21,7 @@ export const queryKeys = {
     all: ['surveys'] as const,
   },
   surveyResponses: {
+    ekiciler: ['survey-responses', 'ekiciler'] as const,
     all: (params?: object) => ['survey-responses', params ?? {}] as const,
   },
 } as const

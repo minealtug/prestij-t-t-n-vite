@@ -3,9 +3,12 @@ import type { AppError } from '@/lib/api/api-error'
 import { isDevAuthEnabled } from '@/features/auth/dev/dev-auth'
 import { devResponsesStore } from '../dev/dev-responses-store'
 import type {
-  SurveyResponseDto,
+  AnketCevapDto,
+  EkiciDto,
+  SurveyResponseGroup,
   SurveyResponsesQueryParams,
 } from '../types/survey-response.types'
+import { filterSurveyResponseGroups, groupAnketCevaplari } from '../utils/map-anket-cevap'
 
 function isNetworkError(error: unknown): boolean {
   return (
@@ -28,10 +31,23 @@ async function withDevFallback<T>(apiCall: () => Promise<T>, devCall: () => T): 
 }
 
 export const surveyResponsesApi = {
-  getAll: (params?: SurveyResponsesQueryParams) =>
+  getEkiciler: () =>
     withDevFallback(
-      () =>
-        apiClient.get<SurveyResponseDto[]>('/survey-responses', params as Record<string, unknown>),
-      () => devResponsesStore.getAll(params),
+      () => apiClient.get<EkiciDto[]>('/api/Ekici'),
+      () => devResponsesStore.getEkiciler(),
     ),
+
+  getByEkici: async (params: SurveyResponsesQueryParams): Promise<SurveyResponseGroup[]> => {
+    const fetchGroups = async (): Promise<SurveyResponseGroup[]> => {
+      if (!params.ekiciId) return []
+
+      const items = await apiClient.get<AnketCevapDto[]>('/api/AnketCevap', {
+        ekiciId: params.ekiciId,
+      })
+      const groups = groupAnketCevaplari(items)
+      return filterSurveyResponseGroups(groups, params.search)
+    }
+
+    return withDevFallback(fetchGroups, () => devResponsesStore.getByEkici(params))
+  },
 }

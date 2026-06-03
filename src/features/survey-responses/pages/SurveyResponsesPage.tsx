@@ -1,36 +1,41 @@
 import { useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
-import { Select } from '@/components/ui/Select'
+import { SearchableSelect } from '@/components/ui/SearchableSelect'
 import { useAuthStore } from '@/stores/auth-store'
-import { useSurveys } from '@/features/surveys/hooks/use-surveys'
 import { SurveyResponsesTable } from '../components/SurveyResponsesTable'
+import { useEkiciler } from '../hooks/use-ekiciler'
 import { useSurveyResponses } from '../hooks/use-survey-responses'
 import { PageContainer } from '@/components/layout/PageContainer'
+import { formatEkiciLabel } from '../types/survey-response.types'
 
 export function SurveyResponsesPage() {
   const user = useAuthStore((s) => s.user)
-  const surveysQuery = useSurveys()
-  const [surveyFilter, setSurveyFilter] = useState('')
+  const ekicilerQuery = useEkiciler()
+  const [ekiciFilter, setEkiciFilter] = useState('')
   const [search, setSearch] = useState('')
 
-  const surveyOptions = useMemo(() => {
-    const options = [{ value: '', label: 'Tüm Anketler' }]
-    const surveys = surveysQuery.data ?? []
-    surveys.forEach((s) => options.push({ value: s.id, label: s.name }))
-    return options
-  }, [surveysQuery.data])
+  const ekiciOptions = useMemo(() => {
+    const ekiciler = ekicilerQuery.data ?? []
+    return ekiciler.map((e) => ({
+      key: e.id,
+      value: e.id,
+      label: formatEkiciLabel(e),
+    }))
+  }, [ekicilerQuery.data])
 
   const responsesQuery = useSurveyResponses({
-    surveyId: surveyFilter || undefined,
+    ekiciId: ekiciFilter || undefined,
     search: search.trim() || undefined,
   })
+
+  const showSelectEkiciHint = !ekiciFilter
 
   return (
     <PageContainer>
       <div>
         <p className="text-sm text-muted">
-          Gönderilen anket cevaplarını görüntüleyin ve filtreleyin.
+          Ekici seçerek anket cevaplarını görüntüleyin ve filtreleyin.
         </p>
         {user?.email && (
           <p className="mt-1 text-xs text-muted">
@@ -42,11 +47,13 @@ export function SurveyResponsesPage() {
       <Card>
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end">
           <div className="w-full sm:max-w-xs">
-            <Select
-              label="Anket"
-              value={surveyFilter}
-              onChange={(e) => setSurveyFilter(e.target.value)}
-              options={surveyOptions}
+            <SearchableSelect
+              label="Ekici"
+              value={ekiciFilter}
+              onChange={setEkiciFilter}
+              options={ekiciOptions}
+              disabled={ekicilerQuery.isLoading}
+              placeholder="Ekici ara veya seç..."
             />
           </div>
           <div className="flex-1">
@@ -60,20 +67,25 @@ export function SurveyResponsesPage() {
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Ara: kullanıcı, anket, soru, cevap..."
+                placeholder="Ara: ekici, anket, mıntıka, soru, cevap..."
                 className="h-10 w-full rounded-lg border border-border bg-surface-elevated py-2 pr-3 pl-9 text-sm placeholder:text-muted focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                disabled={!ekiciFilter}
               />
             </div>
           </div>
         </div>
 
-        <SurveyResponsesTable
-          data={responsesQuery.data ?? []}
-          isLoading={responsesQuery.isLoading}
-          isError={responsesQuery.isError}
-          error={responsesQuery.error}
-          onRefresh={() => void responsesQuery.refetch()}
-        />
+        {showSelectEkiciHint ? (
+          <p className="text-sm text-muted">Listelemek için yukarıdan bir ekici seçin.</p>
+        ) : (
+          <SurveyResponsesTable
+            data={responsesQuery.data ?? []}
+            isLoading={responsesQuery.isLoading}
+            isError={responsesQuery.isError}
+            error={responsesQuery.error}
+            onRefresh={() => void responsesQuery.refetch()}
+          />
+        )}
       </Card>
     </PageContainer>
   )

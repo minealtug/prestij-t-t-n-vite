@@ -3,6 +3,8 @@ import {
   ClipboardList,
   HelpCircle,
   FileQuestion,
+  ListChecks,
+  CircleHelp,
 } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
 import { StatCard } from '@/components/ui/StatCard'
@@ -54,14 +56,12 @@ export function DashboardPage() {
       type: 'survey' as const,
       action: 'Anket Eklendi',
       description: `"${survey.name}" anketi tanımlandı.`,
-      source: survey.kaynak ?? 'Bilinmiyor',
     })),
     ...(questionsQuery.data ?? []).slice(0, 5).map((question) => ({
       id: `question-${question.id}`,
       type: 'question' as const,
       action: 'Soru Eklendi',
       description: question.soruMetni,
-      source: question.kaynak ?? 'Bilinmiyor',
     })),
   ].slice(0, 8)
   const totalActivityPages = Math.max(1, Math.ceil(recentItems.length / activityPageSize))
@@ -134,9 +134,9 @@ export function DashboardPage() {
                     }`}
                   >
                     {item.type === 'survey' ? (
-                      <ClipboardList className="h-5 w-5" />
+                      <ListChecks className="h-5 w-5" />
                     ) : (
-                      <FileQuestion className="h-5 w-5" />
+                      <CircleHelp className="h-5 w-5" />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -147,7 +147,6 @@ export function DashboardPage() {
                       </span>
                     </div>
                     <p className="mt-1 line-clamp-2 text-sm text-muted">{item.description}</p>
-                    <p className="mt-1 text-xs text-muted">Kaynak: {item.source}</p>
                   </div>
                 </li>
               ))}
