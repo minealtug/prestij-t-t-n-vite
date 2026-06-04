@@ -16,23 +16,33 @@ export function formatCevapValue(row: AnketCevapDto): string {
   return '-'
 }
 
+type GroupAccumulator = {
+  group: SurveyResponseGroup
+  answersByQuestion: Map<number, { detail: ResponseAnswerDetail; answeredAt: string }>
+}
+
 export function groupAnketCevaplari(items: AnketCevapDto[]): SurveyResponseGroup[] {
-  const map = new Map<string, SurveyResponseGroup>()
+  const map = new Map<string, GroupAccumulator>()
 
   for (const row of items) {
-    const key = `${row.ekiciId}|${row.islemTarihi}|${row.sablonId}`
-    let group = map.get(key)
-    if (!group) {
-      group = {
-        id: key,
-        submittedAt: row.islemTarihi,
-        username: String(row.kullaniciId),
-        fullName: [row.ekiciAd, row.ekiciSoyad].filter(Boolean).join(' ').trim() || '-',
-        surveyName: row.sablonAdi?.trim() || '-',
-        mintikaAdi: row.mintikaAdi?.trim() || '-',
-        answers: [],
+    const key = `${row.ekiciId}|${row.sablonId}`
+    let entry = map.get(key)
+    if (!entry) {
+      entry = {
+        group: {
+          id: key,
+          submittedAt: row.islemTarihi,
+          username: String(row.kullaniciId),
+          fullName: [row.ekiciAd, row.ekiciSoyad].filter(Boolean).join(' ').trim() || '-',
+          surveyName: row.sablonAdi?.trim() || '-',
+          mintikaAdi: row.mintikaAdi?.trim() || '-',
+          answers: [],
+        },
+        answersByQuestion: new Map(),
       }
-      map.set(key, group)
+      map.set(key, entry)
+    } else if (new Date(row.islemTarihi).getTime() > new Date(entry.group.submittedAt).getTime()) {
+      entry.group.submittedAt = row.islemTarihi
     }
 
     const answer: ResponseAnswerDetail = {
@@ -40,13 +50,21 @@ export function groupAnketCevaplari(items: AnketCevapDto[]): SurveyResponseGroup
       questionText: row.soruMetni?.trim() || '-',
       answer: formatCevapValue(row),
     }
-    group.answers.push(answer)
+    const existing = entry.answersByQuestion.get(row.soruId)
+    if (!existing || new Date(row.islemTarihi).getTime() >= new Date(existing.answeredAt).getTime()) {
+      entry.answersByQuestion.set(row.soruId, {
+        detail: answer,
+        answeredAt: row.islemTarihi,
+      })
+    }
   }
 
-  const groups = [...map.values()]
-  for (const group of groups) {
-    group.answers.sort((a, b) => a.questionNo - b.questionNo)
-  }
+  const groups = [...map.values()].map(({ group, answersByQuestion }) => {
+    group.answers = [...answersByQuestion.values()]
+      .map((item) => item.detail)
+      .sort((a, b) => a.questionNo - b.questionNo)
+    return group
+  })
 
   return groups.sort(
     (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime(),
