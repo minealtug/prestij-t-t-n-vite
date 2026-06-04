@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { Filter } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Select } from '@/components/ui/Select'
 import { useAuthStore } from '@/stores/auth-store'
@@ -12,8 +14,8 @@ import {
 } from '../hooks/use-survey-response-filters'
 import { useSurveyResponses } from '../hooks/use-survey-responses'
 import { PageContainer } from '@/components/layout/PageContainer'
-import type { FilterOptionDto } from '../types/survey-response.types'
-import { hasAllSurveyFilters } from '../types/survey-response.types'
+import type { FilterOptionDto, SurveyResponsesQueryParams } from '../types/survey-response.types'
+import { hasAnySurveyFilter } from '../types/survey-response.types'
 
 function toSelectOptions(
   items: FilterOptionDto[],
@@ -31,6 +33,7 @@ export function SurveyResponsesPage() {
   const [mintikaId, setMintikaId] = useState('')
   const [alimNoktasiId, setAlimNoktasiId] = useState('')
   const [koyId, setKoyId] = useState('')
+  const [appliedFilters, setAppliedFilters] = useState<SurveyResponsesQueryParams | null>(null)
 
   const menseiIdNum = menseiId ? Number(menseiId) : undefined
   const bolgeIdNum = bolgeId ? Number(bolgeId) : undefined
@@ -38,13 +41,7 @@ export function SurveyResponsesPage() {
   const alimNoktasiIdNum = alimNoktasiId ? Number(alimNoktasiId) : undefined
   const koyIdNum = koyId ? Number(koyId) : undefined
 
-  const menseilerQuery = useMenseiler()
-  const bolgelerQuery = useBolgeler(menseiIdNum)
-  const mintikalarQuery = useMintikalar(bolgeIdNum)
-  const alimNoktalariQuery = useAlimNoktalari(mintikaIdNum)
-  const koylerQuery = useKoyler(alimNoktasiIdNum)
-
-  const filterParams = useMemo(
+  const draftFilterParams = useMemo(
     () => ({
       menseiId: menseiIdNum,
       bolgeId: bolgeIdNum,
@@ -55,8 +52,21 @@ export function SurveyResponsesPage() {
     [menseiIdNum, bolgeIdNum, mintikaIdNum, alimNoktasiIdNum, koyIdNum],
   )
 
-  const responsesQuery = useSurveyResponses(filterParams)
-  const filtersReady = hasAllSurveyFilters(filterParams)
+  const draftFiltersReady = hasAnySurveyFilter(draftFilterParams)
+
+  const menseilerQuery = useMenseiler()
+  const bolgelerQuery = useBolgeler(menseiIdNum)
+  const mintikalarQuery = useMintikalar(bolgeIdNum)
+  const alimNoktalariQuery = useAlimNoktalari(mintikaIdNum)
+  const koylerQuery = useKoyler(alimNoktasiIdNum)
+
+  const responsesQuery = useSurveyResponses(appliedFilters ?? undefined)
+  const filtersReady = hasAnySurveyFilter(appliedFilters ?? undefined)
+
+  const handleApplyFilters = () => {
+    if (!draftFiltersReady) return
+    setAppliedFilters(draftFilterParams)
+  }
 
   const menseiOptions = useMemo(
     () => toSelectOptions(menseilerQuery.data ?? [], 'Menşei seçin'),
@@ -128,9 +138,20 @@ export function SurveyResponsesPage() {
           />
         </div>
 
+        <div className="flex justify-end border-t border-border px-5 py-4">
+          <Button
+            onClick={handleApplyFilters}
+            disabled={!draftFiltersReady}
+            loading={responsesQuery.isFetching && filtersReady}
+          >
+            <Filter className="h-4 w-4" />
+            Filtrele
+          </Button>
+        </div>
+
         {!filtersReady ? (
           <p className="px-5 pb-5 text-sm text-muted">
-            Listelemek için menşei, bölge, mıntıka, alım noktası ve köy seçin.
+            Listelemek için en az bir filtre seçin ve Filtrele&apos;ye tıklayın.
           </p>
         ) : (
           <SurveyResponsesTable

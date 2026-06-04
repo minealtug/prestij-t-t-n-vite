@@ -73,12 +73,12 @@ export interface SurveyResponsesQueryParams {
   koyId?: number
 }
 
-export function hasAllSurveyFilters(params?: SurveyResponsesQueryParams): boolean {
+export function hasAnySurveyFilter(params?: SurveyResponsesQueryParams): boolean {
   return Boolean(
-    params?.menseiId &&
-      params?.bolgeId &&
-      params?.alimNoktasiId &&
-      params?.mintikaId &&
+    params?.menseiId ||
+      params?.bolgeId ||
+      params?.alimNoktasiId ||
+      params?.mintikaId ||
       params?.koyId,
   )
 }
