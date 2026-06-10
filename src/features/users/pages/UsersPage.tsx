@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { useRequirePagePermission } from '@/features/permissions/hooks/use-require-page-permission'
 import { CreateUserModal } from '../components/CreateUserModal'
+import { EditUserModal } from '../components/EditUserModal'
 import { UsersTable } from '../components/UsersTable'
 import { useUsers } from '../hooks/use-users'
 import type { UserDto } from '../types/user.types'
@@ -32,7 +33,8 @@ function matchesSearch(user: UserDto, query: string) {
 export function UsersPage() {
   const { canRead, canEdit, loading: permissionLoading } = useRequirePagePermission()
   const [search, setSearch] = useState('')
-  const [modalOpen, setModalOpen] = useState(false)
+  const [createModalOpen, setCreateModalOpen] = useState(false)
+  const [editingUser, setEditingUser] = useState<UserDto | null>(null)
 
   const usersQuery = useUsers()
 
@@ -61,7 +63,7 @@ export function UsersPage() {
           <p className="text-sm text-muted">GET /api/User</p>
         </div>
         <Button
-          onClick={() => setModalOpen(true)}
+          onClick={() => setCreateModalOpen(true)}
           className="w-full sm:w-auto"
           disabled={!canEdit}
         >
@@ -70,9 +72,9 @@ export function UsersPage() {
         </Button>
       </div>
 
-      <Card>
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-          <div className="relative flex-1 min-w-0">
+      <Card className="overflow-hidden !p-0" interactive={false}>
+        <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-end">
+          <div className="relative min-w-0 flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
             <Input
               className="pl-9"
@@ -89,16 +91,22 @@ export function UsersPage() {
           isError={usersQuery.isError}
           error={usersQuery.error}
           onRefresh={() => void usersQuery.refetch()}
+          onEdit={canEdit ? (user) => setEditingUser(user) : undefined}
         />
 
         {usersQuery.data && (
-          <p className="mt-3 text-xs text-muted">
+          <p className="border-t border-border px-5 py-3 text-xs text-muted">
             Gösterilen: {filteredUsers.length} / {usersQuery.data.length} kayıt
           </p>
         )}
       </Card>
 
-      <CreateUserModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <CreateUserModal open={createModalOpen} onClose={() => setCreateModalOpen(false)} />
+      <EditUserModal
+        open={editingUser != null}
+        user={editingUser}
+        onClose={() => setEditingUser(null)}
+      />
     </PageContainer>
   )
 }

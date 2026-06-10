@@ -20,6 +20,10 @@ export interface TableProps<T> {
   emptyMessage?: string
   className?: string
   getRowClassName?: (row: T) => string | undefined
+  /** Varsayılan: true. false iken tablo yatay kaydırma yapmaz, içerik kırpılır. */
+  horizontalScroll?: boolean
+  /** card: bağımsız kart görünümü. plain: üst kapsayıcıya tam genişlikte oturur. */
+  variant?: 'card' | 'plain'
   pagination?: {
     pageSize: number
     pageSizeOptions?: number[]
@@ -35,6 +39,8 @@ export function Table<T>({
   emptyMessage,
   className,
   getRowClassName,
+  horizontalScroll = true,
+  variant = 'card',
   pagination,
 }: TableProps<T>) {
   const [currentPage, setCurrentPage] = useState(1)
@@ -63,7 +69,14 @@ export function Table<T>({
 
   if (isLoading) {
     return (
-      <div className="glass-card overflow-hidden !p-0 hover:translate-y-0">
+      <div
+        className={cn(
+          'w-full overflow-hidden',
+          variant === 'card' && 'glass-card !p-0 hover:translate-y-0',
+          variant === 'plain' && '!p-0',
+          className,
+        )}
+      >
         <div className="space-y-0 divide-y divide-border/60">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex gap-4 px-4 py-3">
@@ -76,9 +89,21 @@ export function Table<T>({
   }
 
   return (
-    <div className={cn('glass-card overflow-hidden !p-0 hover:translate-y-0', className)}>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+    <div
+      className={cn(
+        'w-full overflow-hidden',
+        variant === 'card' && 'glass-card !p-0 hover:translate-y-0',
+        variant === 'plain' && '!p-0',
+        className,
+      )}
+    >
+      <div className={cn('w-full', horizontalScroll ? 'overflow-x-auto' : 'overflow-x-hidden')}>
+        <table
+          className={cn(
+            'w-full border-collapse text-left text-sm',
+            horizontalScroll ? 'min-w-[640px]' : 'min-w-0 table-fixed',
+          )}
+        >
           <thead>
             <tr className="border-b border-border/80 bg-surface-elevated">
               {columns.map((col) => (

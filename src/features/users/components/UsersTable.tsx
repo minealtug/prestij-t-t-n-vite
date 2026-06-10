@@ -1,4 +1,4 @@
-import { RefreshCw } from 'lucide-react'
+import { Pencil, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { Button } from '@/components/ui/Button'
 import { Table, type TableColumn } from '@/components/ui/Table'
@@ -11,6 +11,8 @@ interface UsersTableProps {
   isError: boolean
   error: unknown
   onRefresh: () => void
+  onEdit?: (user: UserDto) => void
+  isUpdating?: boolean
 }
 
 function displayValue(value: string | null | undefined, fallback = '—') {
@@ -34,7 +36,7 @@ function BoolBadge({
   return (
     <span
       className={cn(
-        'inline-flex rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap',
+        'inline-flex rounded-full px-1.5 py-px text-[10px] font-medium leading-tight whitespace-nowrap',
         value
           ? (trueClassName ?? 'bg-primary-500/15 text-primary-700')
           : (falseClassName ?? 'bg-muted/20 text-muted'),
@@ -45,53 +47,95 @@ function BoolBadge({
   )
 }
 
-const columns: TableColumn<UserDto>[] = [
+function buildColumns(
+  onEdit?: (user: UserDto) => void,
+  isUpdating = false,
+): TableColumn<UserDto>[] {
+  return [
   {
     key: 'userName',
-    header: 'Kullanıcı Adı',
-    className: 'hidden sm:table-cell min-w-[120px]',
-    render: (row) => <span className="font-medium">{displayValue(row.userName)}</span>,
+    header: 'Kullanıcı',
+    className: 'hidden sm:table-cell w-[12%]',
+    render: (row) => (
+      <span className="break-words font-medium leading-snug">{displayValue(row.userName)}</span>
+    ),
   },
   {
     key: 'fullName',
     header: 'Ad Soyad',
-    className: 'min-w-[160px]',
+    className: 'w-[10%]',
     render: (row) => (
       <div className="min-w-0">
-        <p className="font-medium truncate">{displayValue(row.fullName)}</p>
-        <p className="text-xs text-muted truncate sm:hidden">{displayValue(row.userName)}</p>
-        <p className="text-xs text-muted truncate md:hidden">{displayValue(row.email)}</p>
+        <p className="break-words font-medium leading-snug">{displayValue(row.fullName)}</p>
+        <p className="break-words text-[11px] leading-snug text-muted sm:hidden">
+          {displayValue(row.userName)}
+        </p>
+        <p className="break-all text-[11px] leading-snug text-muted md:hidden">
+          {displayValue(row.email)}
+        </p>
       </div>
     ),
   },
   {
+    key: 'aktif',
+    header: 'Durum',
+    className: 'w-[6%]',
+    render: (row) => (
+      <BoolBadge
+        value={row.aktif}
+        trueLabel="Aktif"
+        falseLabel="Pasif"
+        trueClassName="bg-emerald-500/15 text-emerald-700"
+        falseClassName="bg-red-500/15 text-red-700"
+      />
+    ),
+  },
+  {
+    key: 'admin',
+    header: 'Admin',
+    className: 'w-[6%]',
+    render: (row) => (
+      <BoolBadge
+        value={row.admin}
+        trueLabel="Evet"
+        falseLabel="Hayır"
+        trueClassName="bg-primary-500/15 text-primary-700"
+        falseClassName="bg-muted/20 text-muted"
+      />
+    ),
+  },
+  {
     key: 'userTypeDescription',
-    header: 'Kullanıcı Tipi',
-    className: 'hidden md:table-cell min-w-[130px]',
-    render: (row) => displayValue(row.userTypeDescription),
+    header: 'Tip',
+    className: 'hidden md:table-cell w-[9%]',
+    render: (row) => (
+      <span className="break-words leading-snug">{displayValue(row.userTypeDescription)}</span>
+    ),
   },
   {
     key: 'lokasyon',
-    header: 'Lokasyon',
-    className: 'hidden md:table-cell min-w-[100px]',
-    render: (row) => displayValue(row.lokasyon),
+    header: 'Lok.',
+    className: 'hidden md:table-cell w-[7%]',
+    render: (row) => <span className="break-words leading-snug">{displayValue(row.lokasyon)}</span>,
   },
   {
     key: 'departmanAdi',
-    header: 'Departman',
-    className: 'hidden lg:table-cell min-w-[120px]',
-    render: (row) => displayValue(row.departmanAdi),
+    header: 'Dept.',
+    className: 'hidden lg:table-cell w-[9%]',
+    render: (row) => (
+      <span className="break-words leading-snug">{displayValue(row.departmanAdi)}</span>
+    ),
   },
   {
     key: 'mintikaAdi',
     header: 'Mıntıka',
-    className: 'hidden xl:table-cell min-w-[110px]',
-    render: (row) => displayValue(row.mintikaAdi),
+    className: 'hidden xl:table-cell w-[8%]',
+    render: (row) => <span className="break-words leading-snug">{displayValue(row.mintikaAdi)}</span>,
   },
   {
     key: 'uretimMerkeziYetki',
-    header: 'ÜM Yetkisi',
-    className: 'hidden xl:table-cell w-[100px]',
+    header: 'ÜM',
+    className: 'hidden xl:table-cell w-[5%]',
     render: (row) => (
       <BoolBadge value={row.uretimMerkeziYetki} trueLabel="Var" falseLabel="Yok" />
     ),
@@ -99,29 +143,52 @@ const columns: TableColumn<UserDto>[] = [
   {
     key: 'email',
     header: 'E-posta',
-    className: 'hidden md:table-cell min-w-[180px]',
-    render: (row) => (
-      <span className="block truncate max-w-[220px]" title={row.email ?? undefined}>
-        {displayValue(row.email)}
-      </span>
-    ),
+    className: 'hidden md:table-cell w-[12%]',
+    render: (row) => <span className="break-all leading-snug">{displayValue(row.email)}</span>,
   },
   {
     key: 'tel',
-    header: 'Telefon',
-    className: 'hidden lg:table-cell min-w-[120px] whitespace-nowrap',
-    render: (row) => displayValue(row.tel),
+    header: 'Tel',
+    className: 'hidden lg:table-cell w-[10%]',
+    render: (row) => <span className="break-words leading-snug">{displayValue(row.tel)}</span>,
   },
-]
-
-function getUserRowClassName(row: UserDto) {
-  return cn(
-    !row.aktif && 'bg-red-50 hover:bg-red-100/70',
-    row.admin && 'border-l-[3px] border-l-sidebar-active',
-  )
+  ...(onEdit
+    ? [
+        {
+          key: 'actions',
+          header: 'İşlem',
+          className: 'w-[5%]',
+          render: (row: UserDto) => (
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Düzenle"
+              disabled={isUpdating}
+              onClick={() => onEdit(row)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          ),
+        } satisfies TableColumn<UserDto>,
+      ]
+    : []),
+  ]
 }
 
-export function UsersTable({ data, isLoading, isError, error, onRefresh }: UsersTableProps) {
+function getUserRowClassName(row: UserDto) {
+  return cn(!row.aktif && 'bg-red-50 hover:bg-red-100/70')
+}
+
+export function UsersTable({
+  data,
+  isLoading,
+  isError,
+  error,
+  onRefresh,
+  onEdit,
+  isUpdating = false,
+}: UsersTableProps) {
+  const columns = buildColumns(onEdit, isUpdating)
   if (isError) {
     return (
       <ErrorState error={error} title="Kullanıcılar yüklenemedi" onRetry={onRefresh} compact />
@@ -129,8 +196,8 @@ export function UsersTable({ data, isLoading, isError, error, onRefresh }: Users
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex justify-end">
+    <div className="w-full border-t border-border">
+      <div className="flex justify-end px-5 py-3">
         <Button variant="outline" size="sm" onClick={onRefresh} disabled={isLoading}>
           <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
           Yenile
@@ -145,7 +212,9 @@ export function UsersTable({ data, isLoading, isError, error, onRefresh }: Users
         isLoading={isLoading}
         emptyTitle="Kullanıcı bulunamadı"
         emptyMessage="Arama kriterlerinize uygun kayıt yok."
-        className="[&_table]:min-w-[480px]"
+        variant="plain"
+        horizontalScroll={false}
+        className="border-t border-border [&_th]:px-2 [&_th]:py-2 [&_th]:text-[10px] [&_th]:leading-tight [&_th]:whitespace-normal [&_td]:px-2 [&_td]:py-1.5 [&_td]:text-xs [&_td]:leading-snug"
         pagination={{ pageSize: 25, pageSizeOptions: [10, 25, 50, 100] }}
       />
     </div>

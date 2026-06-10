@@ -4,6 +4,7 @@ import type {
   CreateUserRequest,
   DepartmanAdi,
   MintikaOptionDto,
+  UpdateUserRequest,
   UserDto,
   UserTypeOptionDto,
 } from '../types/user.types'
@@ -18,7 +19,7 @@ import {
   mapUserTypesFromApi,
 } from '../utils/normalize-user-lookups'
 import { resolveDepartmanId } from '../utils/resolve-departman-id'
-import { buildCreateUserRequest } from '../utils/validate-create-user'
+import { buildCreateUserRequest, buildUpdateUserRequest } from '../utils/validate-create-user'
 function uniqueById<T extends { id: number }>(items: T[]): T[] {
   const seen = new Set<number>()
   return items.filter((item) => {
@@ -72,6 +73,17 @@ export const usersApi = {
     const departmanId = await resolveDepartmanId(form.departmanAdi)
     return apiClient.post<UserDto>('/api/User', {
       ...buildCreateUserRequest(form),
+      departmanId,
+    })
+  },
+
+  update: (id: number, payload: UpdateUserRequest) =>
+    apiClient.put<UserDto>(`/api/User/${id}`, payload),
+
+  updateFromForm: async (id: number, form: CreateUserFormState): Promise<UserDto> => {
+    const departmanId = await resolveDepartmanId(form.departmanAdi)
+    return apiClient.put<UserDto>(`/api/User/${id}`, {
+      ...buildUpdateUserRequest(form),
       departmanId,
     })
   },

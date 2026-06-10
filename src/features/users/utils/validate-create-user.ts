@@ -1,6 +1,12 @@
-import type { CreateUserFormErrors, CreateUserFormState, CreateUserRequest } from '../types/user.types'
+import type {
+  CreateUserFormErrors,
+  CreateUserFormState,
+  CreateUserRequest,
+  UpdateUserRequest,
+  UserWriteRequest,
+} from '../types/user.types'
 
-export function validateCreateUserForm(form: CreateUserFormState): CreateUserFormErrors {
+function validateUserFormBase(form: CreateUserFormState): CreateUserFormErrors {
   const errors: CreateUserFormErrors = {}
 
   if (!form.userName.trim()) {
@@ -11,10 +17,6 @@ export function validateCreateUserForm(form: CreateUserFormState): CreateUserFor
     errors.fullName = 'Ad soyad zorunludur.'
   }
 
-  if (!form.password.trim()) {
-    errors.password = 'Şifre zorunludur.'
-  }
-
   const userTypeId = Number(form.userTypeId)
   if (!form.userTypeId || !Number.isFinite(userTypeId) || userTypeId <= 0) {
     errors.userTypeId = 'Kullanıcı tipi seçiniz.'
@@ -23,11 +25,24 @@ export function validateCreateUserForm(form: CreateUserFormState): CreateUserFor
   return errors
 }
 
-export function buildCreateUserRequest(form: CreateUserFormState): CreateUserRequest {
+export function validateCreateUserForm(form: CreateUserFormState): CreateUserFormErrors {
+  const errors = validateUserFormBase(form)
+
+  if (!form.password.trim()) {
+    errors.password = 'Şifre zorunludur.'
+  }
+
+  return errors
+}
+
+export function validateUpdateUserForm(form: CreateUserFormState): CreateUserFormErrors {
+  return validateUserFormBase(form)
+}
+
+export function buildUserWriteRequest(form: CreateUserFormState): UserWriteRequest {
   return {
     userName: form.userName.trim(),
     fullName: form.fullName.trim(),
-    password: form.password,
     insuranceNumber: form.insuranceNumber.trim() || null,
     userTypeId: Number(form.userTypeId),
     admin: form.admin,
@@ -41,4 +56,18 @@ export function buildCreateUserRequest(form: CreateUserFormState): CreateUserReq
     tel: form.tel.trim() || null,
     icraOdemeUyari: form.icraOdemeUyari,
   }
+}
+
+export function buildCreateUserRequest(form: CreateUserFormState): CreateUserRequest {
+  return {
+    ...buildUserWriteRequest(form),
+    password: form.password,
+  }
+}
+
+export function buildUpdateUserRequest(form: CreateUserFormState): UpdateUserRequest {
+  const payload: UpdateUserRequest = buildUserWriteRequest(form)
+  const password = form.password.trim()
+  if (password) payload.password = password
+  return payload
 }

@@ -2,13 +2,18 @@ export interface UserDto {
   id: number
   userName: string
   fullName: string
+  userTypeId: number | null
   userTypeDescription: string | null
   admin: boolean
   aktif: boolean
   lokasyon: string | null
   departmanId: number | null
   departmanAdi: string | null
+  mintikaId: number | null
   mintikaAdi: string | null
+  supervisorUserId: number | null
+  insuranceNumber: string | null
+  icraOdemeUyari: boolean
   uretimMerkeziYetki: boolean
   email: string | null
   tel: string | null
@@ -31,10 +36,9 @@ export interface MintikaOptionDto {
   adi: string
 }
 
-export interface CreateUserRequest {
+export interface UserWriteRequest {
   userName: string
   fullName: string
-  password: string
   insuranceNumber: string | null
   userTypeId: number
   admin: boolean
@@ -47,6 +51,14 @@ export interface CreateUserRequest {
   email: string | null
   tel: string | null
   icraOdemeUyari: boolean
+}
+
+export interface CreateUserRequest extends UserWriteRequest {
+  password: string
+}
+
+export type UpdateUserRequest = UserWriteRequest & {
+  password?: string | null
 }
 
 export interface CreateUserFormState {

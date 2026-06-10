@@ -32,6 +32,17 @@ export function useMintikas() {
   })
 }
 
+export function useUser(id: number | null) {
+  return useQuery({
+    queryKey: queryKeys.users.detail(id != null ? String(id) : 'none'),
+    queryFn: async () => {
+      if (id == null) return null
+      return usersApi.getById(id)
+    },
+    enabled: id != null,
+  })
+}
+
 export function useCreateUser() {
   const queryClient = useQueryClient()
 
@@ -39,6 +50,20 @@ export function useCreateUser() {
     mutationFn: (form: CreateUserFormState) => usersApi.createFromForm(form),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.all() })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.departmans })
+    },
+  })
+}
+
+export function useUpdateUser() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, form }: { id: number; form: CreateUserFormState }) =>
+      usersApi.updateFromForm(id, form),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.all() })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.detail(String(variables.id)) })
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.departmans })
     },
   })
