@@ -6,21 +6,19 @@ import { Modal } from '@/components/ui/Modal'
 interface SurveyFillSuccessModalProps {
   open: boolean
   onClose: () => void
-  baslikId: number
   answeredCount?: number
 }
 
 export function SurveyFillSuccessModal({
   open,
   onClose,
-  baslikId,
   answeredCount,
 }: SurveyFillSuccessModalProps) {
   const navigate = useNavigate()
 
   const viewResponses = () => {
     onClose()
-    navigate(`/anket-cevaplari?baslikId=${baslikId}&auto=1`)
+    navigate('/anket-cevaplari')
   }
 
   return (

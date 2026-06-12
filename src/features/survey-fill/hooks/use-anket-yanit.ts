@@ -35,6 +35,7 @@ export function useSubmitAnketYanitCevap() {
         predicate: (query) =>
           query.queryKey[0] === 'survey-fill' && query.queryKey[1] === 'oturum',
       })
+      void queryClient.invalidateQueries({ queryKey: ['survey-responses'] })
     },
   })
 }
@@ -53,6 +54,7 @@ export function useSubmitAnketYanitCevapBatch() {
         predicate: (query) =>
           query.queryKey[0] === 'survey-fill' && query.queryKey[1] === 'oturum',
       })
+      void queryClient.invalidateQueries({ queryKey: ['survey-responses'] })
     },
   })
 }

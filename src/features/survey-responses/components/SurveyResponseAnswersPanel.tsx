@@ -73,20 +73,26 @@ export function SurveyResponseAnswersPanel({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={`${ekiciId}-${sablonId}-${row.soruId}`} className="border-b border-border/40">
-              <td className="px-4 py-3 align-top text-foreground">{row.kategori}</td>
-              <td className="px-4 py-3 align-top font-semibold text-foreground">{row.soruMetni}</td>
-              <td
-                className={cn(
-                  'px-4 py-3 align-top text-foreground',
-                  !row.yanitlandi && 'text-amber-800',
-                )}
-              >
-                {row.yanitlandi ? row.cevapMetni : UNANSWERED_ANSWER_LABEL}
-              </td>
-            </tr>
-          ))}
+          {rows.map((row) => {
+            const isUnanswered =
+              !row.yanitlandi || row.cevapMetni === UNANSWERED_ANSWER_LABEL
+            const cevapMetni = isUnanswered ? UNANSWERED_ANSWER_LABEL : row.cevapMetni
+
+            return (
+              <tr key={`${ekiciId}-${sablonId}-${row.soruId}`} className="border-b border-border/40">
+                <td className="px-4 py-3 align-top text-foreground">{row.kategori}</td>
+                <td className="px-4 py-3 align-top font-semibold text-foreground">{row.soruMetni}</td>
+                <td
+                  className={cn(
+                    'px-4 py-3 align-top text-foreground',
+                    isUnanswered && 'text-amber-800',
+                  )}
+                >
+                  {cevapMetni}
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>

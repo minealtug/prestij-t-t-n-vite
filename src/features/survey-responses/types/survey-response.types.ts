@@ -103,7 +103,7 @@ export function hasAnketSurveyFilter(params?: SurveyResponsesQueryParams): boole
 }
 
 export function hasAnySurveyFilter(params?: SurveyResponsesQueryParams): boolean {
-  return hasGeoSurveyFilter(params) || hasAnketSurveyFilter(params)
+  return hasGeoSurveyFilter(params)
 }
 
 export function getAnketCevapRowId(

@@ -38,7 +38,6 @@ import {
 import { getQuestionKey } from '../utils/question-key'
 import { resolveSurveyFillMintikaId } from '../utils/resolve-survey-fill-mintika-id'
 import { validateSurveyFillAnswers } from '../utils/validate-survey-fill-answers'
-import { useSurveyFillRecentStore } from '../stores/survey-fill-recent-store'
 import { SurveyFillSuccessModal } from './SurveyFillSuccessModal'
 
 interface SurveyFillFormProps {
@@ -54,13 +53,10 @@ interface SurveyFillFormProps {
 export function SurveyFillForm({
   baslikId,
   sablonId,
-  baslikAdi = '',
-  sablonAdi = '',
   initialEkiciId = null,
   canSubmit = true,
   onRefreshSablonlar,
 }: SurveyFillFormProps) {
-  const addRecentSave = useSurveyFillRecentStore((state) => state.addRecentSave)
   const [sessionEkiciId, setSessionEkiciId] = useState<string | null>(null)
   const [ekiciDraft, setEkiciDraft] = useState('')
   const [ekiciStepError, setEkiciStepError] = useState('')
@@ -260,16 +256,6 @@ export function SurveyFillForm({
 
     submitCevapBatch.mutate(payloads, {
       onSuccess: () => {
-        const ekiciAdi = selectedEkici ? getEkiciFullName(selectedEkici) : sessionEkiciId
-        addRecentSave({
-          baslikId,
-          sablonId,
-          ekiciId: sessionEkiciId,
-          baslikAdi: baslikAdi || `Anket #${baslikId}`,
-          sablonAdi: sablonAdi || `Şablon #${sablonId}`,
-          ekiciAdi,
-          answeredCount: savedCount,
-        })
         setLastSavedCount(savedCount)
         setInitialAnswers({ ...answers })
         setSuccessModalOpen(true)
@@ -460,7 +446,6 @@ export function SurveyFillForm({
     <SurveyFillSuccessModal
       open={successModalOpen}
       onClose={() => setSuccessModalOpen(false)}
-      baslikId={baslikId}
       answeredCount={lastSavedCount}
     />
     </>
