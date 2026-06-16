@@ -30,7 +30,7 @@ function isQuestionAnswered(
   const kind = resolveQuestionInputKind(question, answerTypeLookup)
 
   if (kind === 'checkbox') {
-    return question.zorunlu ? value === 'true' : true
+    return value === 'true'
   }
 
   if (kind === 'select') {
@@ -38,7 +38,20 @@ function isQuestionAnswered(
     return Number.isFinite(optionId) && optionId > 0
   }
 
+  if (kind === 'ekici') {
+    return value.trim().length > 0
+  }
+
   return value.trim().length > 0
+}
+
+function hasPersistedAnswer(question: AnketYanitSoruDto): boolean {
+  if (!question.yanitlandi) return false
+  return (
+    question.cevapAltSecenekId != null ||
+    Boolean(question.cevapText?.trim()) ||
+    Boolean(question.ekiciId?.trim())
+  )
 }
 
 /** Ekranda görünen sorular ve formdaki cevaplara göre ilerleme. */
@@ -48,13 +61,12 @@ export function getFormFillProgress(
   answerTypeLookup?: AnswerTypeKindLookup,
 ) {
   const total = questions.length
-  const answered = questions.filter((question) =>
-    isQuestionAnswered(
-      question,
-      answers[getQuestionKey(question)] ?? '',
-      answerTypeLookup,
-    ),
-  ).length
+  const answered = questions.filter((question) => {
+    const value = answers[getQuestionKey(question)] ?? ''
+    return (
+      isQuestionAnswered(question, value, answerTypeLookup) || hasPersistedAnswer(question)
+    )
+  }).length
 
   return { total, answered }
 }
@@ -84,6 +96,9 @@ export function getInitialAnswerValue(
   }
 
   if (soru.cevapText) return soru.cevapText
+
+  if (soru.cevapAltSecenekId != null) return String(soru.cevapAltSecenekId)
+
   return ''
 }
 

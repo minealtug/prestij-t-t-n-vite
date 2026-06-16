@@ -33,6 +33,30 @@ function readOptionalPositiveId(raw: unknown): number | null {
   return Number.isFinite(num) && num > 0 ? num : null
 }
 
+function readCevapTextFromFields(cevap: Record<string, unknown>): string | null {
+  const cevapTextRaw = pick(cevap, 'cevapText', 'CevapText')
+  if (cevapTextRaw != null && String(cevapTextRaw).trim()) {
+    return String(cevapTextRaw)
+  }
+
+  const cevapGosterimMetni = pick(cevap, 'cevapGosterimMetni', 'CevapGosterimMetni')
+  if (cevapGosterimMetni != null && String(cevapGosterimMetni).trim()) {
+    return String(cevapGosterimMetni)
+  }
+
+  const cevapNumeric = pick(cevap, 'cevapNumeric', 'CevapNumeric')
+  if (cevapNumeric != null && Number.isFinite(Number(cevapNumeric))) {
+    return String(cevapNumeric)
+  }
+
+  const cevapDatetime = pick(cevap, 'cevapDatetime', 'CevapDatetime')
+  if (cevapDatetime != null && String(cevapDatetime).trim()) {
+    return String(cevapDatetime)
+  }
+
+  return null
+}
+
 function readCevapFields(cevapRaw: unknown) {
   const cevap = asRecord(cevapRaw)
   if (Object.keys(cevap).length === 0) {
@@ -43,11 +67,10 @@ function readCevapFields(cevapRaw: unknown) {
     }
   }
 
-  const cevapTextRaw = pick(cevap, 'cevapText', 'CevapText')
   const ekiciRaw = pick(cevap, 'ekiciId', 'EkiciId')
 
   return {
-    cevapText: cevapTextRaw != null ? String(cevapTextRaw) : null,
+    cevapText: readCevapTextFromFields(cevap),
     cevapAltSecenekId: readOptionalPositiveId(
       pick(cevap, 'cevapAltSecenekId', 'CevapAltSecenekId'),
     ),
@@ -276,14 +299,35 @@ export function mapAnketYanitOturumFromApi(
 
   const ekiciRaw = pick(row, 'ekiciId', 'EkiciId')
   const mintikaId = readMintikaId(row, sorularRaw)
+  const yanitlanmayanSoruSayisi = readNumber(
+    pick(row, 'yanitlanmayanSoruSayisi', 'YanitlanmayanSoruSayisi'),
+  )
+  const yanitlananSoruSayisi = readNumber(
+    pick(row, 'yanitlananSoruSayisi', 'YanitlananSoruSayisi'),
+  )
+  const baslikId = readNumber(pick(row, 'baslikId', 'BaslikId'))
+  const baslikAdiRaw = pick(row, 'baslikAdi', 'BaslikAdi')
+  const sablonAdiRaw = pick(row, 'sablonAdi', 'SablonAdi')
+
+  const tamamlanabilirFromApi =
+    tamamlanabilirRaw !== undefined
+      ? readTamamlanabilir(tamamlanabilirRaw)
+      : readTamamlanabilir(pick(row, 'tamamlanabilir', 'Tamamlanabilir'))
+
+  const tamamlanabilir =
+    yanitlanmayanSoruSayisi != null
+      ? yanitlanmayanSoruSayisi === 0
+      : tamamlanabilirFromApi
 
   return {
     ekiciId: ekiciRaw != null ? String(ekiciRaw) : null,
     mintikaId,
-    tamamlanabilir:
-      tamamlanabilirRaw !== undefined
-        ? readTamamlanabilir(tamamlanabilirRaw)
-        : readTamamlanabilir(pick(row, 'tamamlanabilir', 'Tamamlanabilir')),
+    baslikId,
+    baslikAdi: baslikAdiRaw != null ? String(baslikAdiRaw) : null,
+    sablonAdi: sablonAdiRaw != null ? String(sablonAdiRaw) : null,
+    yanitlananSoruSayisi: yanitlananSoruSayisi ?? undefined,
+    yanitlanmayanSoruSayisi: yanitlanmayanSoruSayisi ?? undefined,
+    tamamlanabilir,
     sorular: sortSorular(sorular),
   }
 }

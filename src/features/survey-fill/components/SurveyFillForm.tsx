@@ -14,6 +14,7 @@ import {
   useAnketYanitOturum,
   useSubmitAnketYanitCevapBatch,
 } from '../hooks/use-anket-yanit'
+import { isAnketCevapNotFoundError } from '../api/anket-yanit-api'
 import { useAltSeceneklerByGrupIds } from '../hooks/use-alt-secenekler'
 import { useEkiciler } from '../hooks/use-ekiciler'
 import {
@@ -68,9 +69,12 @@ export function SurveyFillForm({
       ? { baslikId, sablonId, ekiciId: sessionEkiciId }
       : null,
   )
+  const effectiveBaslikId = oturumQuery.data?.baslikId ?? baslikId
   const submitCevapBatch = useSubmitAnketYanitCevapBatch()
   const answerInputTypesQuery = useAnswerInputTypes()
-  const questionDefinitionsQuery = useQuestions(baslikId)
+  const questionDefinitionsQuery = useQuestions(
+    effectiveBaslikId > 0 ? effectiveBaslikId : undefined,
+  )
   const answerTypeLookup = useMemo(
     () => buildAnswerTypeKindLookup(answerInputTypesQuery.data),
     [answerInputTypesQuery.data],
@@ -242,7 +246,7 @@ export function SurveyFillForm({
 
     const payloads = questionsToSubmit.map((question) =>
       buildAnketYanitCevapRequest(
-        baslikId,
+        effectiveBaslikId,
         sablonId,
         sessionEkiciId,
         mintikaId,
@@ -313,6 +317,23 @@ export function SurveyFillForm({
   }
 
   if (oturumQuery.isError) {
+    if (isAnketCevapNotFoundError(oturumQuery.error)) {
+      return (
+        <div className="border-t border-border px-5 py-8">
+          <EmptyState
+            compact
+            title="Soru yok"
+            description="Bu ekici ve şablon için görüntülenecek soru bulunmuyor."
+          />
+          <div className="mt-4 flex justify-end">
+            <Button variant="outline" size="sm" onClick={() => setSessionEkiciId(null)}>
+              Ekici seçimine dön
+            </Button>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="border-t border-border px-5 py-6">
         <ErrorState
@@ -345,8 +366,8 @@ export function SurveyFillForm({
       <div className="border-t border-border px-5 py-8">
         <EmptyState
           compact
-          title="Görüntülenecek soru yok"
-          description="Bu oturumda görünür soru bulunmuyor."
+          title="Soru yok"
+          description="Bu ekici ve şablon için görüntülenecek soru bulunmuyor."
         />
         <div className="mt-4 flex justify-end">
           <Button variant="outline" size="sm" onClick={() => setSessionEkiciId(null)}>

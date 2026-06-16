@@ -8,7 +8,19 @@ export interface AppError {
   isNetworkError: boolean
 }
 
+export function isAppError(error: unknown): error is AppError {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    'message' in error &&
+    'isNetworkError' in error
+  )
+}
+
 export function normalizeApiError(error: unknown): AppError {
+  if (isAppError(error)) return error
+
   if (!isAxiosError(error)) {
     return {
       status: 0,

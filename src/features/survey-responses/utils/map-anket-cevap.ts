@@ -103,7 +103,8 @@ export function flattenSoruCevapTree(
 
 export function formatSonIslemTarihi(iso: string): string {
   if (!iso?.trim()) return '-'
-  const date = new Date(iso)
+  const trimmed = iso.trim()
+  const date = new Date(trimmed)
   if (Number.isNaN(date.getTime())) return '-'
 
   const day = date.toLocaleDateString('tr-TR', {
@@ -111,6 +112,14 @@ export function formatSonIslemTarihi(iso: string): string {
     month: '2-digit',
     year: 'numeric',
   })
+
+  const hasNoMeaningfulTime =
+    !trimmed.includes('T') ||
+    /T00:00(?::00)?(?:\.\d+)?(?:Z)?$/i.test(trimmed) ||
+    (date.getHours() === 0 && date.getMinutes() === 0 && date.getSeconds() === 0)
+
+  if (hasNoMeaningfulTime) return day
+
   const time = date.toLocaleTimeString('tr-TR', {
     hour: '2-digit',
     minute: '2-digit',

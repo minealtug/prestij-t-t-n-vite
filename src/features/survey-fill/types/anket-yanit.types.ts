@@ -30,6 +30,11 @@ export interface AnketYanitSoruDto {
 export interface AnketYanitOturumDto {
   ekiciId: string | null
   mintikaId: number | null
+  baslikId?: number | null
+  baslikAdi?: string | null
+  sablonAdi?: string | null
+  yanitlananSoruSayisi?: number
+  yanitlanmayanSoruSayisi?: number
   tamamlanabilir: boolean
   sorular: AnketYanitSoruDto[]
 }

@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/api/api-client'
+import { isAppError, normalizeApiError } from '@/lib/api/api-error'
 import type {
   AltSecenekOptionDto,
   AnketSablonDto,
@@ -21,6 +22,29 @@ async function tryFetchAltSecenekler(path: string): Promise<AltSecenekOptionDto[
   }
 }
 
+export function isAnketCevapNotFoundError(error: unknown): boolean {
+  const { status, message } = isAppError(error) ? error : normalizeApiError(error)
+  if (status === 404) return true
+
+  const normalized = message.toLocaleLowerCase('tr-TR')
+  return (
+    normalized.includes('anket cevap bulunamadi') ||
+    normalized.includes('anket cevap bulunamadı') ||
+    normalized.includes('status code 404')
+  )
+}
+
+function createEmptyAnketCevapOturum(ekiciId: string): AnketYanitOturumDto {
+  return {
+    ekiciId,
+    mintikaId: null,
+    tamamlanabilir: false,
+    sorular: [],
+    yanitlananSoruSayisi: 0,
+    yanitlanmayanSoruSayisi: 0,
+  }
+}
+
 export const anketYanitApi = {
   getSablonlar: async (baslikId: number): Promise<AnketSablonDto[]> => {
     const raw = await apiClient.get<unknown[]>('/api/AnketYanit/sablonlar', { baslikId })
@@ -40,6 +64,23 @@ export const anketYanitApi = {
     ])
 
     return mapAnketYanitOturumFromApi(raw, tamamlanabilirRaw)
+  },
+
+  getAnketCevapOturum: async (
+    ekiciId: string,
+    sablonId: number,
+  ): Promise<AnketYanitOturumDto> => {
+    try {
+      const raw = await apiClient.get<unknown>(
+        `/api/AnketCevap/ekici/${encodeURIComponent(ekiciId)}/sablon/${sablonId}`,
+      )
+      return mapAnketYanitOturumFromApi(raw)
+    } catch (error) {
+      if (isAnketCevapNotFoundError(error)) {
+        return createEmptyAnketCevapOturum(ekiciId)
+      }
+      throw error
+    }
   },
 
   submitCevap: (payload: AnketYanitCevapRequest) =>

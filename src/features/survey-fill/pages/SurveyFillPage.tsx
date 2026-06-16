@@ -43,17 +43,24 @@ export function SurveyFillPage() {
     [sablonlarQuery.data, selectedSablonId],
   )
 
-  const surveyOptions = useMemo(
-    () => [
-      { key: 'placeholder', value: '', label: 'Anket seçin' },
-      ...(surveysQuery.data ?? []).map((survey) => ({
-        key: `${survey.kaynak ?? 'unknown'}-${survey.id}`,
-        value: String(survey.id),
-        label: survey.name,
-      })),
-    ],
-    [surveysQuery.data],
-  )
+  // const surveyOptions = useMemo(
+  //   () => [
+  //     { key: 'placeholder', value: '', label: 'Anket seçin' },
+  //     ...(surveysQuery.data ?? []).map((survey) => ({
+  //       key: `${survey.kaynak ?? 'unknown'}-${survey.id}`,
+  //       value: String(survey.id),
+  //       label: survey.name,
+  //     })),
+  //   ],
+  //   [surveysQuery.data],
+  // )
+
+  useEffect(() => {
+    if (selectedBaslikId > 0) return
+    const surveys = surveysQuery.data
+    if (!surveys?.length) return
+    setSelectedBaslikId(Number(surveys[0].id))
+  }, [surveysQuery.data, selectedBaslikId])
 
   const sablonOptions = useMemo(
     () => [
@@ -88,13 +95,13 @@ export function SurveyFillPage() {
       <div>
         <h2 className="text-xl font-bold text-foreground">Anket Doldurma Ekranı</h2>
         <p className="text-sm text-muted">
-          Anket ve şablon seçin, soruları sırayla yanıtlayın
+          Şablon seçin, ekici belirleyin ve soruları sırayla yanıtlayın
         </p>
       </div>
 
       <Card className="overflow-hidden !p-0" interactive={false}>
-        <div className="grid gap-4 p-5 sm:grid-cols-2">
-          <Select
+        <div className="grid gap-4 p-5">
+          {/* <Select
             label="Anket"
             value={selectedBaslikId > 0 ? String(selectedBaslikId) : ''}
             onChange={(e) => {
@@ -105,7 +112,7 @@ export function SurveyFillPage() {
             options={surveyOptions}
             disabled={surveysQuery.isLoading}
             required
-          />
+          /> */}
           <Select
             label="Şablon"
             value={selectedSablonId > 0 ? String(selectedSablonId) : ''}
@@ -131,7 +138,7 @@ export function SurveyFillPage() {
           />
         ) : (
           <div className="border-t border-border px-5 py-8 text-sm text-muted">
-            Soruları görmek için anket ve şablon seçin.
+            Soruları görmek için şablon seçin.
           </div>
         )}
       </Card>

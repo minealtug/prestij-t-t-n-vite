@@ -16,12 +16,8 @@ export function useAnketYanitOturum(params: AnketYanitOturumParams | null) {
     queryKey: params
       ? queryKeys.surveyFill.oturum(params)
       : ['survey-fill', 'oturum', 'idle'],
-    queryFn: () => anketYanitApi.getOturum(params!),
-    enabled:
-      params != null &&
-      params.baslikId > 0 &&
-      params.sablonId > 0 &&
-      params.ekiciId.trim().length > 0,
+    queryFn: () => anketYanitApi.getAnketCevapOturum(params!.ekiciId, params!.sablonId),
+    enabled: params != null && params.sablonId > 0 && params.ekiciId.trim().length > 0,
   })
 }
 

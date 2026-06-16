@@ -8,6 +8,7 @@ interface StatCardProps {
   trend?: string
   variant?: 'default' | 'success' | 'warning' | 'muted'
   className?: string
+  iconContainerClassName?: string
 }
 
 const variantStyles = {
@@ -24,6 +25,7 @@ export function StatCard({
   trend,
   variant = 'default',
   className,
+  iconContainerClassName,
 }: StatCardProps) {
   return (
     <div
@@ -37,7 +39,13 @@ export function StatCard({
         <p className="mt-1 text-xl font-bold text-foreground">{value}</p>
         {trend && <p className="mt-0.5 text-xs text-muted">{trend}</p>}
       </div>
-      <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg', variantStyles[variant])}>
+      <div
+        className={cn(
+          'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+          variantStyles[variant],
+          iconContainerClassName,
+        )}
+      >
         <Icon className="h-5 w-5" aria-hidden />
       </div>
     </div>

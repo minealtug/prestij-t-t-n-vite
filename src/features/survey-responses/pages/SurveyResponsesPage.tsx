@@ -3,7 +3,6 @@ import { Filter } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Select } from '@/components/ui/Select'
-import { useAuthStore } from '@/stores/auth-store'
 import { SurveyResponseStatsCards } from '../components/SurveyResponseStatsCards'
 import { SurveyResponsesTable } from '../components/SurveyResponsesTable'
 import { useCografiFiltreOptions } from '../hooks/use-survey-response-filters'
@@ -31,7 +30,6 @@ function toSelectOptions(
 
 export function SurveyResponsesPage() {
   const { canRead, loading: permissionLoading } = useRequirePagePermission()
-  const user = useAuthStore((s) => s.user)
   const [menseiId, setMenseiId] = useState('')
   const [bolgeId, setBolgeId] = useState('')
   const [mintikaId, setMintikaId] = useState('')
@@ -130,16 +128,13 @@ export function SurveyResponsesPage() {
 
   return (
     <PageContainer>
-      <div>
-        {(user?.userName || user?.email) && (
-          <p className="mt-1 text-xs text-muted">
-            Oturum:{' '}
-            <span className="font-medium text-foreground">
-              {user.userName ?? user.email}
-            </span>
-          </p>
-        )}
-      </div>
+      {filtersReady && (
+        <SurveyResponseStatsCards
+          data={responsesQuery.data ?? []}
+          filterSummary={appliedFilterSummary}
+          isLoading={responsesQuery.isLoading}
+        />
+      )}
 
       <Card className="overflow-hidden !p-0" interactive={false}>
         <div className="grid w-full grid-cols-1 gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
@@ -197,20 +192,13 @@ export function SurveyResponsesPage() {
             Filtrele&apos;ye tıklayın.
           </p>
         ) : (
-          <>
-            <SurveyResponseStatsCards
-              data={responsesQuery.data ?? []}
-              filterSummary={appliedFilterSummary}
-              isLoading={responsesQuery.isLoading}
-            />
-            <SurveyResponsesTable
-              data={responsesQuery.data ?? []}
-              isLoading={responsesQuery.isLoading}
-              isError={responsesQuery.isError}
-              error={responsesQuery.error}
-              onRefresh={() => void responsesQuery.refetch()}
-            />
-          </>
+          <SurveyResponsesTable
+            data={responsesQuery.data ?? []}
+            isLoading={responsesQuery.isLoading}
+            isError={responsesQuery.isError}
+            error={responsesQuery.error}
+            onRefresh={() => void responsesQuery.refetch()}
+          />
         )}
       </Card>
     </PageContainer>
