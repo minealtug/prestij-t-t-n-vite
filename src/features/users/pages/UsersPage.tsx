@@ -58,10 +58,7 @@ export function UsersPage() {
   return (
     <PageContainer>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-foreground">Kullanıcılar</h2>
-          <p className="text-sm text-muted">GET /api/User</p>
-        </div>
+       
         <Button
           onClick={() => setCreateModalOpen(true)}
           className="w-full sm:w-auto"

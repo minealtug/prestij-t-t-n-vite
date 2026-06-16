@@ -1,4 +1,4 @@
-import { Pencil, RefreshCw } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { Button } from '@/components/ui/Button'
 import { Table, type TableColumn } from '@/components/ui/Table'
@@ -162,11 +162,12 @@ function buildColumns(
             <Button
               variant="ghost"
               size="sm"
+              className="!h-7 !w-7 !p-0"
               aria-label="Düzenle"
               disabled={isUpdating}
               onClick={() => onEdit(row)}
             >
-              <Pencil className="h-4 w-4" />
+              <Pencil className="h-3.5 w-3.5" />
             </Button>
           ),
         } satisfies TableColumn<UserDto>,
@@ -197,13 +198,6 @@ export function UsersTable({
 
   return (
     <div className="w-full border-t border-border">
-      <div className="flex justify-end px-5 py-3">
-        <Button variant="outline" size="sm" onClick={onRefresh} disabled={isLoading}>
-          <RefreshCw className={cn('h-4 w-4', isLoading && 'animate-spin')} />
-          Yenile
-        </Button>
-      </div>
-
       <Table
         columns={columns}
         data={data}
@@ -214,7 +208,8 @@ export function UsersTable({
         emptyMessage="Arama kriterlerinize uygun kayıt yok."
         variant="plain"
         horizontalScroll={false}
-        className="border-t border-border [&_th]:px-2 [&_th]:py-2 [&_th]:text-[10px] [&_th]:leading-tight [&_th]:whitespace-normal [&_td]:px-2 [&_td]:py-1.5 [&_td]:text-xs [&_td]:leading-snug"
+        compact
+        className="!rounded-none !border-0"
         pagination={{ pageSize: 25, pageSizeOptions: [10, 25, 50, 100] }}
       />
     </div>

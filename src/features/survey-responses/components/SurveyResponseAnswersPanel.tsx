@@ -24,17 +24,17 @@ export function SurveyResponseAnswersPanel({
 
   if (detailQuery.isLoading) {
     return (
-      <div className="space-y-2 px-4 py-3">
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-8 w-full" />
+      <div className="space-y-2 px-3 py-2">
+        <Skeleton className="h-7 w-full" />
+        <Skeleton className="h-7 w-full" />
+        <Skeleton className="h-7 w-full" />
       </div>
     )
   }
 
   if (detailQuery.isError) {
     return (
-      <div className="px-4 py-3">
+      <div className="px-3 py-2">
         <ErrorState
           error={detailQuery.error}
           title="Sorular yüklenemedi"
@@ -47,29 +47,23 @@ export function SurveyResponseAnswersPanel({
 
   const detail = detailQuery.data
   if (!detail) {
-    return <p className="px-4 py-3 text-sm text-muted">Gösterilecek soru yok.</p>
+    return <p className="px-3 py-2 text-xs text-muted">Gösterilecek soru yok.</p>
   }
 
   const rows = flattenSoruCevapTree(buildSoruCevapTree(detail.sorular), kategoriAdi)
 
   if (rows.length === 0) {
-    return <p className="px-4 py-3 text-sm text-muted">Gösterilecek soru yok.</p>
+    return <p className="px-3 py-2 text-xs text-muted">Gösterilecek soru yok.</p>
   }
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] border-collapse text-left text-sm">
+      <table className="app-table app-table-compact min-w-[640px]">
         <thead>
-          <tr className="border-b border-border/60">
-            <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted">
-              KATEGORİ
-            </th>
-            <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted">
-              SORU
-            </th>
-            <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted">
-              CEVAP
-            </th>
+          <tr>
+            <th>KATEGORİ</th>
+            <th>SORU</th>
+            <th>CEVAP</th>
           </tr>
         </thead>
         <tbody>
@@ -79,13 +73,13 @@ export function SurveyResponseAnswersPanel({
             const cevapMetni = isUnanswered ? UNANSWERED_ANSWER_LABEL : row.cevapMetni
 
             return (
-              <tr key={`${ekiciId}-${sablonId}-${row.soruId}`} className="border-b border-border/40">
-                <td className="px-4 py-3 align-top text-foreground">{row.kategori}</td>
-                <td className="px-4 py-3 align-top font-semibold text-foreground">{row.soruMetni}</td>
+              <tr key={`${ekiciId}-${sablonId}-${row.soruId}`}>
+                <td className="align-top">{row.kategori}</td>
+                <td className="align-top font-medium">{row.soruMetni}</td>
                 <td
                   className={cn(
-                    'px-4 py-3 align-top text-foreground',
-                    isUnanswered && 'text-amber-800',
+                    'align-top',
+                    isUnanswered && 'font-medium text-red-600',
                   )}
                 >
                   {cevapMetni}

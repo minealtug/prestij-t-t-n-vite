@@ -79,7 +79,7 @@ export function QuestionsTable({
     {
       key: 'cevapGirdiTipAdi',
       header: 'CEVAP TİPİ',
-      className: 'w-36',
+      className: 'w-56 min-w-[13rem] whitespace-normal',
       render: (row) => {
         if (!row.cevapGirdiTipAdi) return row.cevapGirdiTipId != null ? row.cevapGirdiTipId : '-'
         const friendly = getFriendlyAnswerTypeLabel(row.cevapGirdiTipAdi)
@@ -87,7 +87,7 @@ export function QuestionsTable({
           friendly === row.cevapGirdiTipAdi ? friendly : `${friendly} (${row.cevapGirdiTipAdi})`
 
         return (
-          <span className="block max-w-[200px] truncate" title={label}>
+          <span className="whitespace-normal break-words" title={label}>
             {label}
           </span>
         )
@@ -129,42 +129,45 @@ export function QuestionsTable({
           {
             key: 'actions',
             header: 'İŞLEMLER',
-            className: 'w-44',
+            className: 'w-28',
             render: (row: QuestionDto) => (
-              <div className="flex gap-1">
+              <div className="flex gap-0.5">
                 {onEdit && (
                   <Button
                     variant="ghost"
                     size="sm"
+                    className="!h-7 !w-7 !p-0"
                     aria-label="Düzenle"
                     disabled={isUpdating}
                     onClick={() => onEdit(row)}
                   >
-                    <Pencil className="h-4 w-4" />
+                    <Pencil className="h-3.5 w-3.5" />
                   </Button>
                 )}
                 {onSetPassive && (
                   <Button
                     variant="ghost"
                     size="sm"
+                    className="!h-7 !w-7 !p-0"
                     aria-label="Pasife Al"
                     disabled={isUpdating || !row.aktif}
                     onClick={() => onSetPassive(row)}
                     title={row.aktif ? 'Pasife al' : 'Zaten pasif'}
                   >
-                    <Ban className="h-4 w-4 text-amber-600" />
+                    <Ban className="h-3.5 w-3.5 text-amber-600" />
                   </Button>
                 )}
                 {onDelete && row.kaynak === 'AppDb' && (
                   <Button
                     variant="ghost"
                     size="sm"
+                    className="!h-7 !w-7 !p-0"
                     aria-label="Sil"
                     disabled={isDeleting}
                     onClick={() => onDelete(row)}
                     title="Soruyu sil"
                   >
-                    <Trash2 className="h-4 w-4 text-red-600" />
+                    <Trash2 className="h-3.5 w-3.5 text-red-600" />
                   </Button>
                 )}
               </div>
@@ -175,8 +178,8 @@ export function QuestionsTable({
   ]
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="app-table-shell">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#ececec] px-4 py-3">
         <h3 className="text-lg font-semibold text-foreground">Sorular</h3>
         <Button variant="outline" size="sm" onClick={onRefresh}>
           <RefreshCw className="h-4 w-4" />
@@ -185,12 +188,14 @@ export function QuestionsTable({
       </div>
 
       {isError ? (
-        <ErrorState
-          error={error}
-          title="Sorular yüklenemedi"
-          onRetry={onRefresh}
-          compact
-        />
+        <div className="p-4">
+          <ErrorState
+            error={error}
+            title="Sorular yüklenemedi"
+            onRetry={onRefresh}
+            compact
+          />
+        </div>
       ) : (
         <Table
           columns={columns}
@@ -199,7 +204,9 @@ export function QuestionsTable({
           isLoading={isLoading}
           emptyMessage="Henüz soru yok."
           horizontalScroll={false}
-          className="!rounded-md"
+          variant="plain"
+          compact
+          className="!rounded-none !border-0"
           pagination={{ pageSize: 25, pageSizeOptions: [10, 25, 50, 100] }}
         />
       )}

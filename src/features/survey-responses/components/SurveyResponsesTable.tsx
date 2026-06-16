@@ -1,10 +1,9 @@
-import { Fragment, useState } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { cn } from '@/lib/utils/cn'
-import { Button } from '@/components/ui/Button'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { Skeleton } from '@/components/feedback/Skeleton'
+import { Button } from '@/components/ui/Button'
 import type { AnketCevapOzetItem } from '../types/survey-response.types'
 import {
   getOzetFullName,
@@ -25,7 +24,7 @@ interface SurveyResponsesTableProps {
 function ExpandIcon({ open }: { open: boolean }) {
   return (
     <span
-      className="inline-flex h-6 w-6 items-center justify-center text-muted"
+      className="inline-flex h-5 w-5 items-center justify-center text-xs text-muted"
       aria-hidden
     >
       {open ? '▲' : '▼'}
@@ -41,16 +40,33 @@ export function SurveyResponsesTable({
   onRefresh,
 }: SurveyResponsesTableProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(25)
+  const totalPages = Math.max(1, Math.ceil(data.length / pageSize))
+  const visibleData = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return data.slice(start, start + pageSize)
+  }, [currentPage, data, pageSize])
 
   const toggle = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id))
   }
 
+  useEffect(() => {
+    setCurrentPage((prev) => Math.min(prev, totalPages))
+  }, [totalPages])
+
+  useEffect(() => {
+    if (!expandedId) return
+    if (visibleData.some((row) => row.id === expandedId)) return
+    setExpandedId(null)
+  }, [expandedId, visibleData])
+
   if (isLoading) {
     return (
-      <div className="w-full space-y-3 border-t border-border px-5 py-4">
+      <div className="w-full space-y-2 border-t border-[#ececec] px-4 py-3">
         {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-10 w-full" />
+          <Skeleton key={i} className="h-8 w-full" />
         ))}
       </div>
     )
@@ -58,7 +74,7 @@ export function SurveyResponsesTable({
 
   if (isError) {
     return (
-      <div className="w-full border-t border-border px-5 py-4">
+      <div className="w-full border-t border-[#ececec] px-4 py-3">
         <ErrorState
           error={error}
           title="Cevaplar yüklenemedi"
@@ -70,39 +86,22 @@ export function SurveyResponsesTable({
   }
 
   return (
-    <div className="w-full border-t border-border">
-      <div className="flex justify-end px-5 pt-4">
-        <Button variant="outline" size="sm" onClick={onRefresh}>
-          <RefreshCw className="h-4 w-4" />
-          Yenile
-        </Button>
-      </div>
-
+    <div className="w-full border-t border-[#ececec]">
       <div className="w-full overflow-x-auto">
-        <table className="w-full min-w-[900px] border-collapse text-left text-sm">
+        <table className="app-table app-table-compact min-w-[900px]">
           <thead>
-            <tr className="border-b border-border">
-              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted">
-                TARİH
-              </th>
-              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted">
-                KULLANICI
-              </th>
-              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted">
-                ADI SOYADI
-              </th>
-              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted">
-                ANKET
-              </th>
-              <th className="w-20 px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted">
-                DETAY
-              </th>
+            <tr>
+              <th>TARİH</th>
+              <th>KULLANICI</th>
+              <th>ADI SOYADI</th>
+              <th>ANKET</th>
+              <th className="w-16 text-center">DETAY</th>
             </tr>
           </thead>
           <tbody>
-            {data.length === 0 ? (
+            {visibleData.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-0">
+                <td colSpan={5} className="!p-0">
                   <EmptyState
                     compact
                     title="Henüz anket cevabı yok"
@@ -111,7 +110,7 @@ export function SurveyResponsesTable({
                 </td>
               </tr>
             ) : (
-              data.map((row) => {
+              visibleData.map((row) => {
                 const isOpen = expandedId === row.id
                 const kategoriAdi = row.baslikAdi?.trim() || 'Genel'
 
@@ -119,8 +118,8 @@ export function SurveyResponsesTable({
                   <Fragment key={row.id}>
                     <tr
                       className={cn(
-                        'cursor-pointer border-b border-border/60 transition-colors hover:bg-primary-500/5',
-                        isOpen && 'bg-primary-500/[0.03]',
+                        'cursor-pointer',
+                        isOpen && 'bg-[#fff9f0]',
                       )}
                       onClick={() => toggle(row.id)}
                       onKeyDown={(e) => {
@@ -133,19 +132,17 @@ export function SurveyResponsesTable({
                       role="button"
                       aria-expanded={isOpen}
                     >
-                      <td className="px-4 py-3 whitespace-nowrap text-foreground">
-                        {formatSonIslemTarihi(row.sonIslemTarihi)}
-                      </td>
-                      <td className="px-4 py-3 text-foreground">{getOzetKullaniciAdi(row)}</td>
-                      <td className="px-4 py-3 text-foreground">{getOzetFullName(row)}</td>
-                      <td className="px-4 py-3 text-foreground">{getOzetSurveyName(row)}</td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="whitespace-nowrap">{formatSonIslemTarihi(row.sonIslemTarihi)}</td>
+                      <td>{getOzetKullaniciAdi(row)}</td>
+                      <td>{getOzetFullName(row)}</td>
+                      <td>{getOzetSurveyName(row)}</td>
+                      <td className="text-center">
                         <ExpandIcon open={isOpen} />
                       </td>
                     </tr>
                     {isOpen && (
-                      <tr className="border-b border-border bg-surface/50">
-                        <td colSpan={5} className="p-0">
+                      <tr className="border-b border-[#ececec] bg-[#fafbfc]">
+                        <td colSpan={5} className="!p-0">
                           <SurveyResponseAnswersPanel
                             ekiciId={row.ekiciId}
                             sablonId={row.sablonId}
@@ -163,6 +160,46 @@ export function SurveyResponsesTable({
           </tbody>
         </table>
       </div>
+      {data.length > 0 && (
+        <div className="flex flex-col gap-2 border-t border-[#ececec] bg-white px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-muted">
+            Sayfa {currentPage} / {totalPages} — {visibleData.length} / {data.length} kayıt
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              aria-label="Sayfadaki kayıt sayısı"
+              className="h-8 rounded-md border border-border bg-white px-2 text-xs text-foreground"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value))
+                setCurrentPage(1)
+              }}
+            >
+              {[10, 25, 50, 100].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            >
+              Önceki
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Sonraki
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

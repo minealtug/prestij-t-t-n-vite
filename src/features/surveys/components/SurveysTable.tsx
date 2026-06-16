@@ -66,8 +66,8 @@ export function SurveysTable({
   ]
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+    <div className="app-table-shell">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#ececec] bg-white px-4 py-4">
         <div className="flex items-center gap-2">
           <h3 className="text-lg font-semibold text-foreground">Anketler</h3>
           {!isLoading && !isError && (
@@ -83,12 +83,14 @@ export function SurveysTable({
       </div>
 
       {isError ? (
-        <ErrorState
-          error={error}
-          title="Anketler yüklenemedi"
-          onRetry={onRefresh}
-          compact
-        />
+        <div className="p-4">
+          <ErrorState
+            error={error}
+            title="Anketler yüklenemedi"
+            onRetry={onRefresh}
+            compact
+          />
+        </div>
       ) : (
         <Table
           columns={columns}
@@ -96,6 +98,8 @@ export function SurveysTable({
           keyExtractor={(row) => `${row.kaynak ?? 'unknown'}-${row.id}`}
           isLoading={isLoading}
           emptyMessage="Henüz anket yok. Soldan yeni anket ekleyebilirsiniz."
+          variant="plain"
+          className="!rounded-none !border-0 bg-white"
         />
       )}
     </div>

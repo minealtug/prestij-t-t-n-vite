@@ -30,8 +30,8 @@ export function SurveyResponseStatsCards({
 
   return (
     <section className="px-1 py-1">
-      <div className="mb-4 rounded-none border-2 border-slate-300 bg-background px-4 py-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-primary-600">Seçili filtre</p>
+      <div className="mb-4 rounded-md border border-[#d4dde8] bg-[#f5f7fa] px-4 py-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted">Seçili filtre</p>
         <p className="mt-1 text-sm font-semibold text-foreground">{filterSummary}</p>
       </div>
 
@@ -40,34 +40,34 @@ export function SurveyResponseStatsCards({
           label="Cevaplanmış soru"
           value={displayCount(stats.yanitlananSoruSayisi, isLoading)}
           icon={CheckCircle2}
-          variant="default"
+          variant="success"
           trend={tamamlanmaTrend}
-          className="!rounded-none !border !border-sky-400/35 bg-gradient-to-br from-sky-500/6 to-slate-500/4"
-          iconContainerClassName="rounded-none"
+          className="rounded-md !border !border-[#d4dde8] bg-[#f6faf9] !shadow-none hover:!translate-y-0 hover:!shadow-none"
+          iconContainerClassName="rounded-md border border-[#c5ddd8] bg-[#e0eeeb] text-[#3d7d74]"
         />
         <StatCard
           label="Cevaplanmamış soru"
           value={displayCount(stats.yanitlanmayanSoruSayisi, isLoading)}
           icon={CircleAlert}
           variant="default"
-          className="!rounded-none !border !border-slate-400/35 bg-gradient-to-br from-slate-500/6 to-slate-500/4"
-          iconContainerClassName="rounded-none"
+          className="rounded-md !border !border-[#d4dde8] bg-[#faf8f9] !shadow-none hover:!translate-y-0 hover:!shadow-none"
+          iconContainerClassName="rounded-md border border-[#d8cfd4] bg-[#ebe5e8] text-[#7d6570]"
         />
         <StatCard
           label="Toplam soru"
           value={displayCount(stats.toplamSoruSayisi, isLoading)}
           icon={ListChecks}
-          variant="default"
-          className="!rounded-none !border !border-sky-400/35 bg-gradient-to-br from-sky-500/6 to-slate-500/4"
-          iconContainerClassName="rounded-none"
+          variant="warning"
+          className="rounded-md !border !border-[#d4dde8] bg-[#faf9f7] !shadow-none hover:!translate-y-0 hover:!shadow-none"
+          iconContainerClassName="rounded-md border border-[#d8d4cb] bg-[#ece9e2] text-[#7a7468]"
         />
         <StatCard
           label="Anket kaydı"
           value={displayCount(stats.kayitSayisi, isLoading)}
           icon={ClipboardList}
           variant="default"
-          className="!rounded-none !border !border-slate-400/35 bg-gradient-to-br from-slate-500/6 to-slate-500/4"
-          iconContainerClassName="rounded-none"
+          className="rounded-md !border !border-[#d4dde8] bg-[#f6f8fb] !shadow-none hover:!translate-y-0 hover:!shadow-none"
+          iconContainerClassName="rounded-md border border-[#c8d4e0] bg-[#e5ebf2] text-[#4f6580]"
         />
       </div>
     </section>

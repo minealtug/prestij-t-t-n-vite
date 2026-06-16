@@ -116,18 +116,16 @@ export function SurveysPage() {
           </form>
         </Card>
 
-        <Card>
-          <SurveysTable
-            data={surveysQuery.data ?? []}
-            isLoading={surveysQuery.isLoading}
-            isError={surveysQuery.isError}
-            error={surveysQuery.error}
-            count={surveyCount}
-            onRefresh={() => void surveysQuery.refetch()}
-            onDelete={canEdit ? handleDelete : undefined}
-            isDeleting={deleteSurvey.isPending}
-          />
-        </Card>
+        <SurveysTable
+          data={surveysQuery.data ?? []}
+          isLoading={surveysQuery.isLoading}
+          isError={surveysQuery.isError}
+          error={surveysQuery.error}
+          count={surveyCount}
+          onRefresh={() => void surveysQuery.refetch()}
+          onDelete={canEdit ? handleDelete : undefined}
+          isDeleting={deleteSurvey.isPending}
+        />
       </div>
     </PageContainer>
   )

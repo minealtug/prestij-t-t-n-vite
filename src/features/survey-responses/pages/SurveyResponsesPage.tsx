@@ -136,7 +136,7 @@ export function SurveyResponsesPage() {
         />
       )}
 
-      <Card className="overflow-hidden !p-0" interactive={false}>
+      <Card className="overflow-hidden !rounded-md !p-0" interactive={false}>
         <div className="grid w-full grid-cols-1 gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <Select
             label="Menşei"
@@ -175,7 +175,7 @@ export function SurveyResponsesPage() {
           />
         </div>
 
-        <div className="flex justify-end border-t border-border px-5 py-4">
+        <div className="flex justify-end border-t border-[#ececec] px-4 py-3">
           <Button
             onClick={handleApplyFilters}
             disabled={!draftFiltersReady}
@@ -185,9 +185,11 @@ export function SurveyResponsesPage() {
             Filtrele
           </Button>
         </div>
+      </Card>
 
+      <Card className="overflow-hidden !rounded-md !p-0" interactive={false}>
         {!filtersReady ? (
-          <p className="px-5 pb-5 text-sm text-muted">
+          <p className="px-5 py-5 text-sm text-muted">
             Listelemek için en az bir coğrafi filtre (menşei, bölge, mıntıka vb.) seçin ve
             Filtrele&apos;ye tıklayın.
           </p>

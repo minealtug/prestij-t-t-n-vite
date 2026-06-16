@@ -100,4 +100,40 @@
   .section-stack {
     @apply flex flex-col gap-6;
   }
+
+  .app-table-shell {
+    @apply w-full overflow-hidden rounded-lg border border-[#e8ecf0] bg-white;
+  }
+
+  .app-table {
+    @apply w-full border-collapse text-left text-sm;
+  }
+
+  .app-table thead tr {
+    @apply border-b border-[#e5e9ef] bg-white;
+  }
+
+  .app-table th {
+    @apply bg-white px-4 py-3 text-sm font-medium text-foreground/90 whitespace-nowrap;
+  }
+
+  .app-table tbody tr {
+    @apply border-b border-[#ececec] bg-white transition-colors last:border-b-0;
+  }
+
+  .app-table tbody tr:hover {
+    background-color: #fff9f0;
+  }
+
+  .app-table td {
+    @apply px-4 py-3 text-sm text-foreground/80;
+  }
+
+  .app-table-compact th {
+    @apply px-3 py-2 text-xs font-medium;
+  }
+
+  .app-table-compact td {
+    @apply px-3 py-1.5 text-xs leading-snug;
+  }
 }

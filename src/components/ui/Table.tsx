@@ -22,8 +22,10 @@ export interface TableProps<T> {
   getRowClassName?: (row: T) => string | undefined
   /** Varsayılan: true. false iken tablo yatay kaydırma yapmaz, içerik kırpılır. */
   horizontalScroll?: boolean
-  /** card: bağımsız kart görünümü. plain: üst kapsayıcıya tam genişlikte oturur. */
+  /** card: beyaz kapsayıcı + kenarlık. plain: yalnızca tablo (üst bileşen kapsar). */
   variant?: 'card' | 'plain'
+  /** Daha sıkı satır yüksekliği */
+  compact?: boolean
   pagination?: {
     pageSize: number
     pageSizeOptions?: number[]
@@ -41,6 +43,7 @@ export function Table<T>({
   getRowClassName,
   horizontalScroll = true,
   variant = 'card',
+  compact = false,
   pagination,
 }: TableProps<T>) {
   const [currentPage, setCurrentPage] = useState(1)
@@ -67,19 +70,19 @@ export function Table<T>({
     return data.slice(start, start + pageSize)
   }, [currentPage, data, pageSize, pagination])
 
+  const shellClassName = cn(
+    'w-full overflow-hidden',
+    variant === 'card' && 'app-table-shell',
+    variant === 'plain' && '!p-0',
+    className,
+  )
+
   if (isLoading) {
     return (
-      <div
-        className={cn(
-          'w-full overflow-hidden',
-          variant === 'card' && 'glass-card !p-0 hover:translate-y-0',
-          variant === 'plain' && '!p-0',
-          className,
-        )}
-      >
-        <div className="space-y-0 divide-y divide-border/60">
+      <div className={shellClassName}>
+        <div className="divide-y divide-[#ececec]">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex gap-4 px-4 py-3">
+            <div key={i} className="flex gap-4 bg-white px-4 py-3">
               <Skeleton className="h-4 w-full max-w-xs" />
             </div>
           ))}
@@ -89,31 +92,19 @@ export function Table<T>({
   }
 
   return (
-    <div
-      className={cn(
-        'w-full overflow-hidden',
-        variant === 'card' && 'glass-card !p-0 hover:translate-y-0',
-        variant === 'plain' && '!p-0',
-        className,
-      )}
-    >
+    <div className={shellClassName}>
       <div className={cn('w-full', horizontalScroll ? 'overflow-x-auto' : 'overflow-x-hidden')}>
         <table
           className={cn(
-            'w-full border-collapse text-left text-sm',
+            'app-table',
+            compact && 'app-table-compact',
             horizontalScroll ? 'min-w-[640px]' : 'min-w-0 table-fixed',
           )}
         >
           <thead>
-            <tr className="border-b border-border/80 bg-surface-elevated">
+            <tr>
               {columns.map((col) => (
-                <th
-                  key={col.key}
-                  className={cn(
-                    'px-4 py-3.5 text-xs font-semibold tracking-wide text-foreground/80 whitespace-nowrap',
-                    col.className,
-                  )}
-                >
+                <th key={col.key} className={col.className}>
                   {col.header}
                 </th>
               ))}
@@ -122,8 +113,8 @@ export function Table<T>({
           <tbody>
             {visibleData.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="p-0">
-                  <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
+                <td colSpan={columns.length} className="!p-0">
+                  <div className="flex flex-col items-center justify-center bg-white px-4 py-10 text-center">
                     <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-primary-500/10 text-primary-600">
                       <Inbox className="h-5 w-5" aria-hidden />
                     </div>
@@ -136,15 +127,9 @@ export function Table<T>({
               </tr>
             ) : (
               visibleData.map((row) => (
-                <tr
-                  key={keyExtractor(row)}
-                  className={cn(
-                    'border-b border-border/60 transition-colors last:border-0 hover:bg-primary-500/5',
-                    getRowClassName?.(row),
-                  )}
-                >
+                <tr key={keyExtractor(row)} className={getRowClassName?.(row)}>
                   {columns.map((col) => (
-                    <td key={col.key} className={cn('px-4 py-3 text-foreground', col.className)}>
+                    <td key={col.key} className={col.className}>
                       {col.render(row)}
                     </td>
                   ))}
@@ -155,14 +140,14 @@ export function Table<T>({
         </table>
       </div>
       {pagination && data.length > 0 && (
-        <div className="flex flex-col gap-3 border-t border-border/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-t border-[#ececec] bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-muted">
             Sayfa {currentPage} / {totalPages} — {visibleData.length} / {data.length} kayıt
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <select
               aria-label="Sayfadaki kayıt sayısı"
-              className="h-8 rounded-md border border-border bg-surface-elevated px-2 text-xs text-foreground"
+              className="h-8 rounded-md border border-border bg-white px-2 text-xs text-foreground"
               value={pageSize}
               onChange={(e) => {
                 setSelectedPageSize(Number(e.target.value))
