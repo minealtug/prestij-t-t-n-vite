@@ -48,7 +48,7 @@ export function checkReadPermission(
   if (isAdmin) return true
 
   const entries = menuPermissions[normalizeUrl(url)]
-  if (!entries?.length) return true
+  if (!entries?.length) return false
 
   const okuma = filterByTuru(entries, YETKI_OKUMA)
   const yazma = filterByTuru(entries, YETKI_YAZMA)
@@ -57,14 +57,14 @@ export function checkReadPermission(
 
   if (okuma.length > 0 && yazma.length === 0) {
     const allAssigned = okuma.every((e) => assignedPermissions.has(e.yetkiId))
-    if (!allAssigned) return true
+    if (!allAssigned) return false
     return okuma.some((e) => userPermissions.includes(e.yetkiId))
   }
 
   if (okuma.length > 0 && yazma.length > 0) {
     const allOkumaAssigned = okuma.every((e) => assignedPermissions.has(e.yetkiId))
     const allYazmaAssigned = yazma.every((e) => assignedPermissions.has(e.yetkiId))
-    if (!allOkumaAssigned || !allYazmaAssigned) return true
+    if (!allOkumaAssigned || !allYazmaAssigned) return false
     const allIds = [...okuma, ...yazma].map((e) => e.yetkiId)
     return allIds.some((id) => userPermissions.includes(id))
   }
@@ -89,19 +89,19 @@ export function checkWritePermission(
 
   if (yazma.length > 0 && okuma.length === 0) {
     const allAssigned = yazma.every((e) => assignedPermissions.has(e.yetkiId))
-    if (!allAssigned) return true
+    if (!allAssigned) return false
     return yazma.some((e) => userPermissions.includes(e.yetkiId))
   }
 
   if (okuma.length > 0 && yazma.length === 0) {
     const allAssigned = okuma.every((e) => assignedPermissions.has(e.yetkiId))
-    if (!allAssigned) return true
+    if (!allAssigned) return false
     return okuma.some((e) => userPermissions.includes(e.yetkiId))
   }
 
   if (okuma.length > 0 && yazma.length > 0) {
     const allYazmaAssigned = yazma.every((e) => assignedPermissions.has(e.yetkiId))
-    if (!allYazmaAssigned) return true
+    if (!allYazmaAssigned) return false
     return yazma.some((e) => userPermissions.includes(e.yetkiId))
   }
 
