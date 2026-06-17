@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback } from 'react'
 import { useAuthStore } from '@/stores/auth-store'
 import {
   refreshPermissionsCache,
@@ -21,11 +21,6 @@ export function usePermissions() {
   const initialized = usePermissionsStore((s) => s.initialized)
 
   const isAdmin = Boolean(user?.admin)
-  const allowedMenuUrlSet = useMemo(
-    () => new Set(allowedMenuUrls.map(normalizeUrl)),
-    [allowedMenuUrls],
-  )
-  const assignedSet = useMemo(() => new Set(assignedPermissions), [assignedPermissions])
 
   const hasPermission = useCallback(
     (yetkiId: number) => isAdmin || userPermissions.includes(yetkiId),
@@ -37,14 +32,9 @@ export function usePermissions() {
       const path = normalizeUrl(url)
       if (isAdminOnlyPath(path)) return isAdmin
       if (isAdmin) return true
-
-      if (allowedMenuUrlSet.size > 0) {
-        return allowedMenuUrlSet.has(path)
-      }
-
-      return checkReadPermission(path, menuPermissions, userPermissions, assignedSet, isAdmin)
+      return checkReadPermission(path, menuPermissions, userPermissions, isAdmin)
     },
-    [allowedMenuUrlSet, assignedSet, isAdmin, menuPermissions, userPermissions],
+    [isAdmin, menuPermissions, userPermissions],
   )
 
   const hasWritePermission = useCallback(
@@ -53,9 +43,9 @@ export function usePermissions() {
       if (isAdminOnlyPath(path)) return isAdmin
       if (isAdmin) return true
       if (!hasReadPermission(path)) return false
-      return checkWritePermission(path, menuPermissions, userPermissions, assignedSet, isAdmin)
+      return checkWritePermission(path, menuPermissions, userPermissions, isAdmin)
     },
-    [assignedSet, hasReadPermission, isAdmin, menuPermissions, userPermissions],
+    [hasReadPermission, isAdmin, menuPermissions, userPermissions],
   )
 
   const canAccessYetkilendirme = isAdmin

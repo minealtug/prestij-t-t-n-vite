@@ -67,75 +67,67 @@ function filterByTuru(entries: MenuPermissionEntry[], turu: string) {
   return entries.filter((e) => e.yetkiTuru.toLowerCase() === turu.toLowerCase())
 }
 
-function getActiveEntries(entries: MenuPermissionEntry[], assignedPermissions: Set<number>) {
-  return entries.filter((e) => assignedPermissions.has(e.yetkiId))
+function hasAnyYetki(entries: MenuPermissionEntry[], userPermissions: number[]): boolean {
+  return entries.some((e) => userPermissions.includes(e.yetkiId))
 }
 
+/**
+ * Menü yetki kuralları:
+ * - Menü tanımı yok → herkes görüntüleyebilir
+ * - Sadece görüntüleme → yetkili kullanıcılar + admin
+ * - Sadece düzenleme → herkes görüntüleyebilir
+ * - Görüntüleme + düzenleme → görüntüleme yetkisi gerekli
+ */
 export function checkReadPermission(
   url: string,
   menuPermissions: MenuPermissionMap,
   userPermissions: number[],
-  assignedPermissions: Set<number>,
   isAdmin: boolean,
 ): boolean {
   if (isAdmin) return true
 
   const entries = menuPermissions[normalizeUrl(url)]
-  if (!entries?.length) return false
+  if (!entries?.length) return true
 
   const okuma = filterByTuru(entries, YETKI_OKUMA)
   const yazma = filterByTuru(entries, YETKI_YAZMA)
 
-  if (yazma.length > 0 && okuma.length === 0) {
-    const active = getActiveEntries(yazma, assignedPermissions)
-    if (active.length === 0) return false
-    return active.some((e) => userPermissions.includes(e.yetkiId))
-  }
+  if (yazma.length > 0 && okuma.length === 0) return true
 
-  if (okuma.length > 0 && yazma.length === 0) {
-    const active = getActiveEntries(okuma, assignedPermissions)
-    if (active.length === 0) return false
-    return active.some((e) => userPermissions.includes(e.yetkiId))
-  }
-
-  if (okuma.length > 0 && yazma.length > 0) {
-    const active = getActiveEntries([...okuma, ...yazma], assignedPermissions)
-    if (active.length === 0) return false
-    return active.some((e) => userPermissions.includes(e.yetkiId))
+  if (okuma.length > 0) {
+    return hasAnyYetki(okuma, userPermissions)
   }
 
   return false
 }
 
+/**
+ * Menü yetki kuralları:
+ * - Menü tanımı yok → herkes düzenleyebilir
+ * - Sadece görüntüleme → sayfaya girebilen herkes düzenleyebilir (admin hariç kontrol: görüntüleme yetkisi)
+ * - Sadece düzenleme → yetkili kullanıcılar + admin
+ * - Görüntüleme + düzenleme → düzenleme yetkisi gerekli
+ */
 export function checkWritePermission(
   url: string,
   menuPermissions: MenuPermissionMap,
   userPermissions: number[],
-  assignedPermissions: Set<number>,
   isAdmin: boolean,
 ): boolean {
   if (isAdmin) return true
 
   const entries = menuPermissions[normalizeUrl(url)]
-  if (!entries?.length) return false
+  if (!entries?.length) return true
 
   const okuma = filterByTuru(entries, YETKI_OKUMA)
   const yazma = filterByTuru(entries, YETKI_YAZMA)
 
-  if (yazma.length > 0 && okuma.length === 0) {
-    const active = getActiveEntries(yazma, assignedPermissions)
-    if (active.length === 0) return false
-    return active.some((e) => userPermissions.includes(e.yetkiId))
-  }
-
   if (okuma.length > 0 && yazma.length === 0) {
-    return false
+    return hasAnyYetki(okuma, userPermissions)
   }
 
-  if (okuma.length > 0 && yazma.length > 0) {
-    const active = getActiveEntries(yazma, assignedPermissions)
-    if (active.length === 0) return false
-    return active.some((e) => userPermissions.includes(e.yetkiId))
+  if (yazma.length > 0) {
+    return hasAnyYetki(yazma, userPermissions)
   }
 
   return false
