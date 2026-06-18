@@ -21,6 +21,7 @@ interface SurveyFillQuestionFieldProps {
   ekiciLoading?: boolean
   selectLoading?: boolean
   answerTypeLookup?: AnswerTypeKindLookup
+  disabled?: boolean
 }
 
 export function SurveyFillQuestionField({
@@ -33,6 +34,7 @@ export function SurveyFillQuestionField({
   ekiciLoading = false,
   selectLoading = false,
   answerTypeLookup,
+  disabled = false,
 }: SurveyFillQuestionFieldProps) {
   const fieldId = `survey-fill-${getQuestionKey(question)}`
   const kind = resolveQuestionInputKind(question, answerTypeLookup)
@@ -51,6 +53,7 @@ export function SurveyFillQuestionField({
         'rounded-xl border border-border/80 bg-surface-elevated/60 p-4 sm:p-5',
         question.bagliSoru && 'ml-3 border-l-4 border-l-primary-300/70 sm:ml-4',
         error && 'border-red-300/80 ring-1 ring-red-200',
+        disabled && 'opacity-70',
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -90,7 +93,7 @@ export function SurveyFillQuestionField({
             value={value}
             onChange={onChange}
             options={ekiciOptions}
-            disabled={ekiciLoading}
+            disabled={disabled || ekiciLoading}
             error={error}
             placeholder={ekiciLoading ? 'Ekiciler yükleniyor...' : 'Ad veya soyad ile ekici ara...'}
             emptyMessage="Eşleşen ekici bulunamadı"
@@ -110,7 +113,7 @@ export function SurveyFillQuestionField({
               },
               ...selectOptions,
             ]}
-            disabled={selectLoading || selectOptions.length === 0}
+            disabled={disabled || selectLoading || selectOptions.length === 0}
             error={error}
           />
         ) : kind === 'textarea' ? (
@@ -121,13 +124,20 @@ export function SurveyFillQuestionField({
             placeholder="Cevabınızı yazın"
             error={error}
             rows={4}
+            disabled={disabled}
           />
         ) : kind === 'checkbox' ? (
-          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border/70 bg-surface px-3 py-3">
+          <label
+            className={cn(
+              'flex items-start gap-3 rounded-lg border border-border/70 bg-surface px-3 py-3',
+              disabled ? 'cursor-not-allowed' : 'cursor-pointer',
+            )}
+          >
             <input
               id={fieldId}
               type="checkbox"
               checked={value === 'true'}
+              disabled={disabled}
               onChange={(e) => onChange(e.target.checked ? 'true' : 'false')}
               className="mt-0.5 h-4 w-4 rounded border-border text-primary-500 focus:ring-primary-500"
             />
@@ -141,6 +151,7 @@ export function SurveyFillQuestionField({
             onChange={(e) => onChange(e.target.value)}
             placeholder="Cevabınızı girin"
             error={error}
+            disabled={disabled}
           />
         )}
 

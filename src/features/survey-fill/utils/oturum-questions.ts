@@ -1,12 +1,63 @@
+import type { QuestionDto } from '@/features/questions/types/question.types'
 import type { AnketYanitOturumDto, AnketYanitSoruDto } from '../types/anket-yanit.types'
 import type { AnswerTypeKindLookup } from './build-answer-type-kind-lookup'
 import { isEkiciProducerQuestion } from './is-ekici-producer-question'
 import { getQuestionKey } from './question-key'
 import { resolveQuestionInputKind } from './resolve-question-input-kind'
 
+export function mapQuestionDefinitionToOturumPreview(
+  question: QuestionDto,
+  sira: number,
+): AnketYanitSoruDto {
+  return {
+    soruId: Number(question.id),
+    sira,
+    soruMetni: question.soruMetni,
+    altSoruMetni: question.altSoruMetni,
+    gorunur: true,
+    zorunlu: question.zorunlu,
+    bagliSoru: question.bagliSoru,
+    cevapGirdiTipAdi: question.cevapGirdiTipAdi ?? null,
+    cevapGirdiTipId: question.cevapGirdiTipId ?? null,
+    secenekGrupId: question.secenekGrupId,
+    altSecenekler: [],
+    yanitlandi: false,
+    cevapText: null,
+    cevapAltSecenekId: null,
+    ekiciId: null,
+  }
+}
+
+export function buildPreviewQuestionsFromDefinitions(
+  definitions: QuestionDto[] | undefined,
+): AnketYanitSoruDto[] {
+  if (!definitions?.length) return []
+
+  return sortOturumQuestionsForFill(
+    definitions
+      .filter((question) => question.aktif)
+      .map((question, index) => mapQuestionDefinitionToOturumPreview(question, index + 1))
+      .filter((question) => !isEkiciProducerQuestion(question)),
+  )
+}
+
 export function getVisibleOturumQuestions(oturum: AnketYanitOturumDto | undefined): AnketYanitSoruDto[] {
   if (!oturum) return []
   return oturum.sorular.filter((soru) => soru.gorunur)
+}
+
+/** Doldurma ekranı: önce görünür sorular; hiçbiri yoksa oturumdaki tüm sorular. */
+export function getFillOturumQuestions(oturum: AnketYanitOturumDto | undefined): AnketYanitSoruDto[] {
+  if (!oturum) return []
+  const visible = getVisibleOturumQuestions(oturum)
+  if (visible.length > 0) return visible
+  return oturum.sorular
+}
+
+export function getDisplayFillQuestions(questions: AnketYanitSoruDto[]): AnketYanitSoruDto[] {
+  return sortOturumQuestionsForFill(questions).filter(
+    (question) => !isEkiciProducerQuestion(question),
+  )
 }
 
 export function sortOturumQuestionsForFill(questions: AnketYanitSoruDto[]): AnketYanitSoruDto[] {

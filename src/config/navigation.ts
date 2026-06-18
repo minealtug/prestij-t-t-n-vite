@@ -9,6 +9,7 @@ import {
   BookMarked,
   Shield,
   Users,
+  Ruler,
 } from 'lucide-react'
 
 export interface NavItem {
@@ -77,6 +78,7 @@ export const sidebarSections: NavSection[] = [
         children: [
           { to: '/tanimlamalar/soru-tanimlamalari', label: 'Tanımlı Sorular', icon: FileQuestion },
           { to: '/tanimlamalar/anket-tanimlamalari', label: 'Anket Tanımlama', icon: ClipboardList },
+          { to: '/tanimlamalar/birim-tanimlamalari', label: 'Birim Tanımlama', icon: Ruler },
         ],
       },
     ],
@@ -100,6 +102,7 @@ export const pageTitles: Record<string, string> = {
   '/tanimlamalar': 'Tanımlamalar',
   '/tanimlamalar/soru-tanimlamalari': 'Tanımlı Sorular',
   '/tanimlamalar/anket-tanimlamalari': 'Anket Tanımlama',
+  '/tanimlamalar/birim-tanimlamalari': 'Birim Tanımlama',
   '/yetkilendirme': 'Yetkilendirme',
   '/users': 'Kullanıcılar',
   '/settings': 'Ayarlar',

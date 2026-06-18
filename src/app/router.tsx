@@ -12,6 +12,7 @@ import { SurveysPage } from '@/features/surveys/pages/SurveysPage'
 import { SurveyResponsesPage } from '@/features/survey-responses/pages/SurveyResponsesPage'
 import { MySurveyResponsesPage } from '@/features/survey-responses/pages/MySurveyResponsesPage'
 import { SurveyFillPage } from '@/features/survey-fill/pages/SurveyFillPage'
+import { AnswerUnitsPage } from '@/features/answer-units/pages/AnswerUnitsPage'
 import { ModulePage } from '@/pages/ModulePage'
 import { YetkilendirmePage } from '@/features/permissions/pages/YetkilendirmePage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
           { path: 'soru-yonetimi', element: <QuestionsPage /> },
           { path: 'tanimlamalar/soru-tanimlamalari', element: <QuestionsPage /> },
           { path: 'tanimlamalar/anket-tanimlamalari', element: <SurveysPage /> },
+          { path: 'tanimlamalar/birim-tanimlamalari', element: <AnswerUnitsPage /> },
           {
             path: 'anket-yonetimi',
             element: <Navigate to="/tanimlamalar/anket-tanimlamalari" replace />,

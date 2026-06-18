@@ -33,6 +33,31 @@ export function SurveyFillPage() {
     setSearchParams({}, { replace: true })
   }, [searchParams, setSearchParams])
 
+  useEffect(() => {
+    if (selectedBaslikId > 0) return
+    const surveys = surveysQuery.data
+    if (!surveys?.length) return
+    setSelectedBaslikId(Number(surveys[0].id))
+  }, [surveysQuery.data, selectedBaslikId])
+
+  useEffect(() => {
+    if (selectedBaslikId <= 0) {
+      setSelectedSablonId(0)
+      return
+    }
+
+    const sablonlar = sablonlarQuery.data ?? []
+    if (sablonlar.length === 0) {
+      setSelectedSablonId(0)
+      return
+    }
+
+    const currentSablonValid = sablonlar.some((sablon) => sablon.id === selectedSablonId)
+    if (!currentSablonValid) {
+      setSelectedSablonId(sablonlar[0].id)
+    }
+  }, [selectedBaslikId, sablonlarQuery.data, selectedSablonId])
+
   const selectedSurvey = useMemo(
     () => (surveysQuery.data ?? []).find((survey) => Number(survey.id) === selectedBaslikId),
     [surveysQuery.data, selectedBaslikId],
@@ -43,42 +68,25 @@ export function SurveyFillPage() {
     [sablonlarQuery.data, selectedSablonId],
   )
 
-  // const surveyOptions = useMemo(
-  //   () => [
-  //     { key: 'placeholder', value: '', label: 'Anket seçin' },
-  //     ...(surveysQuery.data ?? []).map((survey) => ({
-  //       key: `${survey.kaynak ?? 'unknown'}-${survey.id}`,
-  //       value: String(survey.id),
-  //       label: survey.name,
-  //     })),
-  //   ],
-  //   [surveysQuery.data],
-  // )
-
-  useEffect(() => {
-    if (selectedBaslikId > 0) return
-    const surveys = surveysQuery.data
-    if (!surveys?.length) return
-    setSelectedBaslikId(Number(surveys[0].id))
-  }, [surveysQuery.data, selectedBaslikId])
-
-  const sablonOptions = useMemo(
+  const surveyOptions = useMemo(
     () => [
       {
         key: 'placeholder',
         value: '',
-        label: sablonlarQuery.isLoading ? 'Şablonlar yükleniyor...' : 'Şablon seçin',
+        label: surveysQuery.isLoading ? 'Anketler yükleniyor...' : 'Anket seçin',
       },
-      ...(sablonlarQuery.data ?? []).map((sablon) => ({
-        key: String(sablon.id),
-        value: String(sablon.id),
-        label: sablon.adi,
+      ...(surveysQuery.data ?? []).map((survey) => ({
+        key: String(survey.id),
+        value: String(survey.id),
+        label: survey.name,
       })),
     ],
-    [sablonlarQuery.data, sablonlarQuery.isLoading],
+    [surveysQuery.data, surveysQuery.isLoading],
   )
 
-  const sessionReady = selectedBaslikId > 0 && selectedSablonId > 0
+  const sessionReady = selectedBaslikId > 0
+  const selectDisabled =
+    surveysQuery.isLoading && (surveysQuery.data?.length ?? 0) === 0
 
   if (permissionLoading) {
     return (
@@ -92,11 +100,9 @@ export function SurveyFillPage() {
 
   return (
     <PageContainer>
- 
-
       <Card className="overflow-hidden !p-0" interactive={false}>
         <div className="grid gap-4 p-5">
-          {/* <Select
+          <Select
             label="Anket"
             value={selectedBaslikId > 0 ? String(selectedBaslikId) : ''}
             onChange={(e) => {
@@ -105,18 +111,7 @@ export function SurveyFillPage() {
               setInitialEkiciId(null)
             }}
             options={surveyOptions}
-            disabled={surveysQuery.isLoading}
-            required
-          /> */}
-          <Select
-            label="Şablon"
-            value={selectedSablonId > 0 ? String(selectedSablonId) : ''}
-            onChange={(e) => {
-              setSelectedSablonId(Number(e.target.value) || 0)
-              setInitialEkiciId(null)
-            }}
-            options={sablonOptions}
-            disabled={selectedBaslikId <= 0 || sablonlarQuery.isLoading}
+            disabled={selectDisabled}
             required
           />
         </div>
@@ -128,12 +123,12 @@ export function SurveyFillPage() {
             baslikAdi={selectedSurvey?.name}
             sablonAdi={selectedSablon?.adi}
             initialEkiciId={initialEkiciId}
-            canSubmit={canEdit}
+            canSubmit={canEdit && selectedSablonId > 0}
             onRefreshSablonlar={() => void sablonlarQuery.refetch()}
           />
         ) : (
           <div className="border-t border-border px-5 py-8 text-sm text-muted">
-            Soruları görmek için şablon seçin.
+            {selectDisabled ? 'Anketler yükleniyor…' : 'Soruları görmek için anket seçin.'}
           </div>
         )}
       </Card>

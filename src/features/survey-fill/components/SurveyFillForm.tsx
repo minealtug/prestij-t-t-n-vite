@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, ChevronRight, RefreshCw, Save } from 'lucide-react'
+import { CheckCircle2, RefreshCw, Save } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { EmptyState } from '@/components/feedback/EmptyState'
@@ -21,19 +21,18 @@ import {
   enrichOturumQuestionsWithDefinitions,
   mergeAltSeceneklerIntoQuestions,
 } from '../utils/enrich-oturum-questions'
-import {
-  hasEkiciProducerQuestion,
-  isEkiciProducerQuestion,
-} from '../utils/is-ekici-producer-question'
+import { isEkiciProducerQuestion } from '../utils/is-ekici-producer-question'
 import { getEkiciFullName } from '../utils/normalize-ekici-api'
 import { buildAnswerTypeKindLookup } from '../utils/build-answer-type-kind-lookup'
 import { buildAnketYanitCevapRequest } from '../utils/build-anket-yanit-cevap'
 import {
   buildInitialAnswersMap,
+  buildPreviewQuestionsFromDefinitions,
+  getDisplayFillQuestions,
+  getFillOturumQuestions,
   getFormFillProgress,
   getQuestionDisplayNumber,
   getQuestionsToSubmit,
-  getVisibleOturumQuestions,
   sortOturumQuestionsForFill,
 } from '../utils/oturum-questions'
 import { getQuestionKey } from '../utils/question-key'
@@ -59,8 +58,6 @@ export function SurveyFillForm({
   onRefreshSablonlar,
 }: SurveyFillFormProps) {
   const [sessionEkiciId, setSessionEkiciId] = useState<string | null>(null)
-  const [ekiciDraft, setEkiciDraft] = useState('')
-  const [ekiciStepError, setEkiciStepError] = useState('')
   const [successModalOpen, setSuccessModalOpen] = useState(false)
   const [lastSavedCount, setLastSavedCount] = useState(0)
 
@@ -69,7 +66,7 @@ export function SurveyFillForm({
       ? { baslikId, sablonId, ekiciId: sessionEkiciId }
       : null,
   )
-  const effectiveBaslikId = oturumQuery.data?.baslikId ?? baslikId
+  const effectiveBaslikId = baslikId
   const submitCevapBatch = useSubmitAnketYanitCevapBatch()
   const answerInputTypesQuery = useAnswerInputTypes()
   const questionDefinitionsQuery = useQuestions(
@@ -91,19 +88,32 @@ export function SurveyFillForm({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState('')
 
-  const baseVisibleQuestions = useMemo(
-    () => sortOturumQuestionsForFill(getVisibleOturumQuestions(oturumQuery.data)),
+  const templateQuestions = useMemo(
+    () => buildPreviewQuestionsFromDefinitions(questionDefinitionsQuery.data),
+    [questionDefinitionsQuery.data],
+  )
+
+  const allOturumQuestions = useMemo(
+    () => sortOturumQuestionsForFill(getFillOturumQuestions(oturumQuery.data)),
     [oturumQuery.data],
   )
+
+  const sourceQuestions = useMemo(() => {
+    if (sessionEkiciId && oturumQuery.data) {
+      const sessionQuestions = getDisplayFillQuestions(allOturumQuestions)
+      if (sessionQuestions.length > 0) return sessionQuestions
+    }
+    return templateQuestions
+  }, [sessionEkiciId, oturumQuery.data, allOturumQuestions, templateQuestions])
 
   const enrichedQuestions = useMemo(
     () =>
       enrichOturumQuestionsWithDefinitions(
-        baseVisibleQuestions,
+        sourceQuestions,
         questionDefinitionsQuery.data,
         answerInputTypesQuery.data,
       ),
-    [baseVisibleQuestions, questionDefinitionsQuery.data, answerInputTypesQuery.data],
+    [sourceQuestions, questionDefinitionsQuery.data, answerInputTypesQuery.data],
   )
 
   const secenekGrupIds = useMemo(
@@ -128,11 +138,6 @@ export function SurveyFillForm({
   const progress = useMemo(
     () => getFormFillProgress(visibleQuestions, answers, answerTypeLookup),
     [visibleQuestions, answers, answerTypeLookup],
-  )
-
-  const hasEkiciQuestion = useMemo(
-    () => hasEkiciProducerQuestion(visibleQuestions),
-    [visibleQuestions],
   )
 
   const ekiciOptions = useMemo(
@@ -165,10 +170,16 @@ export function SurveyFillForm({
     ],
   )
 
+  const questionsReady = Boolean(sessionEkiciId && oturumQuery.data && !oturumQuery.isLoading)
+  const questionsDisabled = !questionsReady
+  const showQuestionsLoading =
+    questionDefinitionsQuery.isLoading ||
+    Boolean(sessionEkiciId && oturumQuery.isLoading)
+  const showTamamlanabilir =
+    Boolean(oturumQuery.data?.tamamlanabilir) && visibleQuestions.length > 0
+
   useEffect(() => {
     setSessionEkiciId(initialEkiciId)
-    setEkiciDraft(initialEkiciId ?? '')
-    setEkiciStepError('')
     setAnswers({})
     setInitialAnswers({})
     setFieldErrors({})
@@ -177,31 +188,47 @@ export function SurveyFillForm({
   }, [baslikId, sablonId, initialEkiciId])
 
   useEffect(() => {
-    if (!oturumQuery.data) return
+    if (sessionEkiciId) {
+      if (!oturumQuery.data) return
+      const questions = sortOturumQuestionsForFill(getFillOturumQuestions(oturumQuery.data))
+      if (questions.length === 0) return
 
-    const questions = sortOturumQuestionsForFill(getVisibleOturumQuestions(oturumQuery.data))
-    if (questions.length === 0) return
+      const nextAnswers = buildInitialAnswersMap(questions, sessionEkiciId, answerTypeLookup)
+      setAnswers(nextAnswers)
+      setInitialAnswers(nextAnswers)
+      setFieldErrors({})
+      setSubmitError('')
+      return
+    }
 
-    const nextAnswers = buildInitialAnswersMap(questions, sessionEkiciId, answerTypeLookup)
+    if (templateQuestions.length === 0) return
+
+    const nextAnswers = buildInitialAnswersMap(templateQuestions, null, answerTypeLookup)
     setAnswers(nextAnswers)
     setInitialAnswers(nextAnswers)
     setFieldErrors({})
     setSubmitError('')
-  }, [oturumQuery.dataUpdatedAt, sessionEkiciId, oturumQuery.data, answerTypeLookup])
+  }, [
+    oturumQuery.dataUpdatedAt,
+    sessionEkiciId,
+    oturumQuery.data,
+    answerTypeLookup,
+    templateQuestions,
+  ])
 
   const handleRefresh = () => {
     void oturumQuery.refetch()
     onRefreshSablonlar?.()
     void ekicilerQuery.refetch()
+    void questionDefinitionsQuery.refetch()
   }
 
-  const handleStartSession = () => {
-    if (!ekiciDraft) {
-      setEkiciStepError('Ankete başlamak için ekici seçin.')
-      return
-    }
-    setEkiciStepError('')
-    setSessionEkiciId(ekiciDraft)
+  const handleEkiciChange = (value: string) => {
+    setSessionEkiciId(value || null)
+    setAnswers({})
+    setInitialAnswers({})
+    setFieldErrors({})
+    setSubmitError('')
   }
 
   const handleAnswerChange = (key: string, value: string) => {
@@ -216,7 +243,15 @@ export function SurveyFillForm({
   }
 
   const handleSubmitAnswers = () => {
-    if (!canSubmit || !sessionEkiciId) return
+    if (!canSubmit || !sessionEkiciId) {
+      setSubmitError('Cevapları kaydetmek için önce ekici seçin.')
+      return
+    }
+
+    if (sablonId <= 0) {
+      setSubmitError('Bu anket için kayıt şablonu bulunamadı.')
+      return
+    }
 
     const validationErrors = validateSurveyFillAnswers(
       visibleQuestions,
@@ -228,7 +263,12 @@ export function SurveyFillForm({
       return
     }
 
-    const questionsToSubmit = getQuestionsToSubmit(visibleQuestions, answers, initialAnswers)
+    const hiddenEkiciQuestions = allOturumQuestions.filter(isEkiciProducerQuestion)
+    const questionsToSubmit = getQuestionsToSubmit(
+      [...visibleQuestions, ...hiddenEkiciQuestions],
+      answers,
+      initialAnswers,
+    )
     if (questionsToSubmit.length === 0) {
       setSubmitError('Kaydedilecek yeni cevap bulunmuyor.')
       return
@@ -268,206 +308,187 @@ export function SurveyFillForm({
     })
   }
 
-  if (!sessionEkiciId) {
-    return (
-      <div className="space-y-4 border-t border-border px-5 py-6">
-        <p className="text-sm text-muted">
-          Oturum başlatmak için önce ekici seçin. API, anket sorularını yüklerken ekici bilgisini
-          gerektirir.
-        </p>
-
-        {ekicilerQuery.isError && (
-          <ErrorState
-            error={ekicilerQuery.error}
-            title="Ekici listesi yüklenemedi"
-            onRetry={() => void ekicilerQuery.refetch()}
-            compact
-          />
-        )}
-
-        {ekicilerQuery.isLoading ? (
-          <Skeleton className="h-11 w-full rounded-lg" />
-        ) : (
-          <SearchableSelect
-            label="Ekici"
-            value={ekiciDraft}
-            onChange={(value) => {
-              setEkiciDraft(value)
-              if (ekiciStepError) setEkiciStepError('')
-            }}
-            options={ekiciOptions}
-            disabled={ekicilerQuery.isLoading}
-            error={ekiciStepError}
-            placeholder="Ad veya soyad ile ekici ara..."
-            emptyMessage="Eşleşen ekici bulunamadı"
-          />
-        )}
-
-        <div className="flex flex-wrap justify-end gap-2">
-          <Button
-            onClick={handleStartSession}
-            disabled={!canSubmit || ekicilerQuery.isLoading || !ekiciDraft}
-          >
-            <ChevronRight className="h-4 w-4" />
-            Ankete Başla
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  if (oturumQuery.isError) {
-    if (isAnketCevapNotFoundError(oturumQuery.error)) {
+  const renderQuestions = () => {
+    if (showQuestionsLoading) {
       return (
-        <div className="border-t border-border px-5 py-8">
-          <EmptyState
-            compact
-            title="Soru yok"
-            description="Bu ekici ve şablon için görüntülenecek soru bulunmuyor."
-          />
-          <div className="mt-4 flex justify-end">
-            <Button variant="outline" size="sm" onClick={() => setSessionEkiciId(null)}>
-              Ekici seçimine dön
-            </Button>
-          </div>
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <Skeleton key={index} className="h-32 w-full rounded-xl" />
+          ))}
         </div>
       )
     }
 
-    return (
-      <div className="border-t border-border px-5 py-6">
+    if (questionDefinitionsQuery.isError) {
+      return (
+        <ErrorState
+          error={questionDefinitionsQuery.error}
+          title="Anket soruları yüklenemedi"
+          onRetry={() => void questionDefinitionsQuery.refetch()}
+          compact
+        />
+      )
+    }
+
+    if (sessionEkiciId && oturumQuery.isError) {
+      if (isAnketCevapNotFoundError(oturumQuery.error)) {
+        if (templateQuestions.length > 0) {
+          return renderQuestionFields()
+        }
+
+        return (
+          <EmptyState
+            compact
+            title="Soru yok"
+            description="Bu ekici ve anket için görüntülenecek soru bulunmuyor."
+          />
+        )
+      }
+
+      return (
         <ErrorState
           error={oturumQuery.error}
           title="Anket oturumu yüklenemedi"
           onRetry={handleRefresh}
           compact
         />
-        <div className="mt-4 flex justify-end">
-          <Button variant="outline" size="sm" onClick={() => setSessionEkiciId(null)}>
-            Ekici seçimine dön
-          </Button>
-        </div>
-      </div>
-    )
-  }
+      )
+    }
 
-  if (oturumQuery.isLoading) {
-    return (
-      <div className="space-y-4 border-t border-border px-5 py-6">
-        {Array.from({ length: 3 }).map((_, index) => (
-          <Skeleton key={index} className="h-32 w-full rounded-xl" />
-        ))}
-      </div>
-    )
-  }
+    if (visibleQuestions.length === 0) {
+      if (sessionEkiciId && oturumQuery.data?.tamamlanabilir) {
+        return (
+          <EmptyState
+            compact
+            title="Anket tamamlandı"
+            description="Bu ekici için bu anketin tüm soruları yanıtlanmış."
+          />
+        )
+      }
 
-  if (visibleQuestions.length === 0) {
-    return (
-      <div className="border-t border-border px-5 py-8">
+      return (
         <EmptyState
           compact
           title="Soru yok"
-          description="Bu ekici ve şablon için görüntülenecek soru bulunmuyor."
+          description={
+            sessionEkiciId
+              ? 'Bu ekici ve anket için görüntülenecek soru bulunmuyor.'
+              : 'Bu anket için tanımlı soru bulunmuyor.'
+          }
         />
-        <div className="mt-4 flex justify-end">
-          <Button variant="outline" size="sm" onClick={() => setSessionEkiciId(null)}>
-            Ekici seçimine dön
-          </Button>
-        </div>
-      </div>
-    )
+      )
+    }
+
+    return renderQuestionFields()
   }
+
+  const renderQuestionFields = () => (
+    <div className="space-y-4">
+      {!sessionEkiciId && (
+        <p className="text-sm text-muted">Soruları doldurmak için yukarıdan ekici seçin.</p>
+      )}
+
+      {visibleQuestions.map((question) => {
+        const key = getQuestionKey(question)
+
+        return (
+          <SurveyFillQuestionField
+            key={key}
+            question={question}
+            displayNumber={getQuestionDisplayNumber(visibleQuestions, question)}
+            value={answers[key] ?? ''}
+            error={fieldErrors[key]}
+            onChange={(value) => handleAnswerChange(key, value)}
+            selectLoading={altSeceneklerQuery.isLoading}
+            answerTypeLookup={answerTypeLookup}
+            disabled={questionsDisabled}
+          />
+        )
+      })}
+    </div>
+  )
 
   return (
     <>
-    <div className="border-t border-border">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
-        <p className="text-sm text-muted">
-          Doldurulan:{' '}
-          <span className="font-medium text-foreground">
-            {progress.answered} / {progress.total}
-          </span>{' '}
-          soru
-          <span className="mx-2 text-border">·</span>
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => setSessionEkiciId(null)}>
-            Ekici değiştir
-          </Button>
-          <Button type="button" variant="outline" size="sm" onClick={handleRefresh}>
-            <RefreshCw className="h-4 w-4" />
-            Yenile
-          </Button>
-        </div>
-      </div>
-
-      {oturumQuery.data?.tamamlanabilir && (
-        <div className="mx-5 mb-4 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>Tüm zorunlu sorular yanıtlandı. Anket tamamlanabilir durumda.</p>
-        </div>
-      )}
-
-      {hasEkiciQuestion && ekicilerQuery.isError && (
-        <div className="px-5 pb-2">
-          <ErrorState
-            error={ekicilerQuery.error}
-            title="Ekici listesi yüklenemedi"
-            onRetry={() => void ekicilerQuery.refetch()}
-            compact
-          />
-        </div>
-      )}
-
-      <div className="space-y-4 px-5 pb-5">
-        {visibleQuestions.map((question) => {
-          const key = getQuestionKey(question)
-          const isEkiciQuestion = isEkiciProducerQuestion(question)
-
-          return (
-            <SurveyFillQuestionField
-              key={key}
-              question={question}
-              displayNumber={getQuestionDisplayNumber(visibleQuestions, question)}
-              value={answers[key] ?? ''}
-              error={fieldErrors[key]}
-              onChange={(value) => handleAnswerChange(key, value)}
-              ekiciOptions={isEkiciQuestion ? ekiciOptions : undefined}
-              ekiciLoading={isEkiciQuestion && ekicilerQuery.isLoading}
-              selectLoading={altSeceneklerQuery.isLoading}
-              answerTypeLookup={answerTypeLookup}
+      <div className="border-t border-border">
+        <div className="space-y-4 px-5 py-5">
+          {ekicilerQuery.isError && (
+            <ErrorState
+              error={ekicilerQuery.error}
+              title="Ekici listesi yüklenemedi"
+              onRetry={() => void ekicilerQuery.refetch()}
+              compact
             />
-          )
-        })}
-      </div>
+          )}
 
-      <div className="border-t border-border bg-surface/60 px-5 py-4">
-        {submitError && (
-          <p
-            className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
-            role="alert"
-          >
-            {submitError}
-          </p>
+          {ekicilerQuery.isLoading ? (
+            <Skeleton className="h-11 w-full rounded-lg" />
+          ) : (
+            <SearchableSelect
+              label="Ekici"
+              value={sessionEkiciId ?? ''}
+              onChange={handleEkiciChange}
+              options={ekiciOptions}
+              disabled={ekicilerQuery.isLoading}
+              placeholder="Ad veya soyad ile ekici ara..."
+              emptyMessage="Eşleşen ekici bulunamadı"
+            />
+          )}
+        </div>
+
+        {sessionEkiciId && visibleQuestions.length > 0 && !oturumQuery.isError && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4">
+            <p className="text-sm text-muted">
+              Doldurulan:{' '}
+              <span className="font-medium text-foreground">
+                {progress.answered} / {progress.total}
+              </span>{' '}
+              soru
+              <span className="mx-2 text-border">·</span>
+            </p>
+            <Button type="button" variant="outline" size="sm" onClick={handleRefresh}>
+              <RefreshCw className="h-4 w-4" />
+              Yenile
+            </Button>
+          </div>
         )}
 
-        <div className="flex flex-wrap justify-end gap-2">
-          <Button
-            onClick={handleSubmitAnswers}
-            disabled={!canSubmit}
-            loading={submitCevapBatch.isPending || oturumQuery.isFetching}
-          >
-            <Save className="h-4 w-4" />
-            Cevapları Kaydet
-          </Button>
+        {showTamamlanabilir && (
+          <div className="mx-5 mb-4 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>Tüm zorunlu sorular yanıtlandı. Anket tamamlanabilir durumda.</p>
+          </div>
+        )}
+
+        <div className="space-y-4 px-5 pb-5">{renderQuestions()}</div>
+
+        <div className="border-t border-border bg-surface/60 px-5 py-4">
+          {submitError && (
+            <p
+              className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+              role="alert"
+            >
+              {submitError}
+            </p>
+          )}
+
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              onClick={handleSubmitAnswers}
+              disabled={!canSubmit || !sessionEkiciId}
+              loading={submitCevapBatch.isPending || oturumQuery.isFetching}
+            >
+              <Save className="h-4 w-4" />
+              Cevapları Kaydet
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
-    <SurveyFillSuccessModal
-      open={successModalOpen}
-      onClose={() => setSuccessModalOpen(false)}
-      answeredCount={lastSavedCount}
-    />
+      <SurveyFillSuccessModal
+        open={successModalOpen}
+        onClose={() => setSuccessModalOpen(false)}
+        answeredCount={lastSavedCount}
+      />
     </>
   )
 }

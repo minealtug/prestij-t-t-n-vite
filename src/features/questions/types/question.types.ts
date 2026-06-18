@@ -30,6 +30,18 @@ export interface CevapGirdiTipDto {
   kaynak?: string | null
 }
 
+export interface CreateLinkedQuestionPayload {
+  cevapGirdiTipId: number
+  soruMetni: string
+  altSoruMetni?: string
+  zorunlu: boolean
+  aktif: boolean
+  secenekGrupId?: number
+  anketCevapBirimId?: number
+  bagliAltSecenekId?: number
+  bagliSorular?: CreateLinkedQuestionPayload[]
+}
+
 export interface CreateQuestionRequest {
   baslikId: number
   cevapGirdiTipId: number
@@ -38,11 +50,38 @@ export interface CreateQuestionRequest {
   zorunlu: boolean
   aktif: boolean
   secenekGrupId?: number
+  anketCevapBirimId?: number
   bagliSoru: boolean
+  bagliSorular?: CreateLinkedQuestionPayload[]
 }
 
-export interface CreateLinkedQuestionWithMigrateRequest extends CreateQuestionRequest {
+export interface CreateNewLinkedQuestionRequest {
+  baslikId: number
+  cevapGirdiTipId: number
+  soruMetni: string
+  altSoruMetni?: string
+  zorunlu: boolean
+  aktif: boolean
+  secenekGrupId?: number
+  anketCevapBirimId?: number
+  bagliAltSecenekId?: number
+}
+
+export interface LinkExistingQuestionRequest {
+  bagliSoruId: number
+  bagliAltSecenekId?: number | null
+}
+
+export interface QuestionConnectionDto {
+  id: number
+  soruId: number
+  bagliSoruId: number
+  bagliAltSecenekId?: number | null
+}
+
+export interface CreateLinkedQuestionWithMigrateRequest extends CreateNewLinkedQuestionRequest {
   parentLegacyQuestionId: number
+  bagliLegacyAltSecenekId?: number
 }
 
 export interface LinkedQuestionMigrateResultDto {

@@ -2,8 +2,11 @@ import { apiClient } from '@/lib/api/api-client'
 import type {
   CevapGirdiTipDto,
   CreateLinkedQuestionWithMigrateRequest,
+  CreateNewLinkedQuestionRequest,
   CreateQuestionRequest,
+  LinkExistingQuestionRequest,
   LinkedQuestionMigrateResultDto,
+  QuestionConnectionDto,
   QuestionDto,
 } from '../types/question.types'
 
@@ -15,6 +18,15 @@ export const questionsApi = {
 
   create: (payload: CreateQuestionRequest) =>
     apiClient.post<QuestionDto>('/api/AnketSoru', payload),
+
+  createNewLinked: (parentId: string | number, payload: CreateNewLinkedQuestionRequest) =>
+    apiClient.post<QuestionDto>(`/api/AnketSoru/${parentId}/bagli-sorular/yeni`, payload),
+
+  linkExisting: (parentId: string | number, payload: LinkExistingQuestionRequest) =>
+    apiClient.post<QuestionConnectionDto>(
+      `/api/AnketSoru/${parentId}/bagli-sorular/mevcut`,
+      payload,
+    ),
 
   migrateAndAddLinked: (payload: CreateLinkedQuestionWithMigrateRequest) =>
     apiClient.post<LinkedQuestionMigrateResultDto>('/api/AnketSoruBaglanti/migrate-and-add-linked', payload),

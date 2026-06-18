@@ -19,9 +19,13 @@ export const queryKeys = {
   questions: {
     all: (baslikId?: number) => ['questions', { baslikId: baslikId ?? null }] as const,
     answerInputTypes: ['questions', 'answer-input-types'] as const,
+    altSecenekler: ['questions', 'alt-secenekler'] as const,
   },
   surveys: {
     all: ['surveys'] as const,
+  },
+  answerUnits: {
+    all: ['answer-units'] as const,
   },
   permissions: {
     menus: ['permissions', 'menus'] as const,
