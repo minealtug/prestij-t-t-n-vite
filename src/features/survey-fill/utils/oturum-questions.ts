@@ -1,9 +1,25 @@
 import type { QuestionDto } from '@/features/questions/types/question.types'
+import { normalizeBagliKosulTipi } from '@/features/questions/utils/bagli-kosul-tipi'
 import type { AnketYanitOturumDto, AnketYanitSoruDto } from '../types/anket-yanit.types'
 import type { AnswerTypeKindLookup } from './build-answer-type-kind-lookup'
 import { isEkiciProducerQuestion } from './is-ekici-producer-question'
 import { getQuestionKey } from './question-key'
-import { resolveQuestionInputKind } from './resolve-question-input-kind'
+import { resolveEffectiveQuestionInputKind } from './resolve-question-input-kind'
+import { sortQuestionsUnderParents } from './sort-survey-fill-questions'
+
+function readSecenekGrupId(value: unknown): number | null {
+  const num = Number(value)
+  return Number.isFinite(num) && num > 0 ? num : null
+}
+
+function readPositiveId(value: unknown): number | null {
+  return readSecenekGrupId(value)
+}
+
+function readQuestionSecenekGrupId(question: QuestionDto): number | null {
+  const raw = question as QuestionDto & { SecenekGrupId?: number | null }
+  return readSecenekGrupId(question.secenekGrupId ?? raw.SecenekGrupId)
+}
 
 export function mapQuestionDefinitionToOturumPreview(
   question: QuestionDto,
@@ -17,9 +33,12 @@ export function mapQuestionDefinitionToOturumPreview(
     gorunur: true,
     zorunlu: question.zorunlu,
     bagliSoru: question.bagliSoru,
+    bagliOlduguSoruId: readPositiveId(question.bagliOlduguSoruId) ?? null,
+    bagliAltSecenekId: readPositiveId(question.bagliAltSecenekId) ?? null,
+    bagliKosulTipi: normalizeBagliKosulTipi(question.bagliKosulTipi),
     cevapGirdiTipAdi: question.cevapGirdiTipAdi ?? null,
     cevapGirdiTipId: question.cevapGirdiTipId ?? null,
-    secenekGrupId: question.secenekGrupId,
+    secenekGrupId: readQuestionSecenekGrupId(question),
     altSecenekler: [],
     yanitlandi: false,
     cevapText: null,
@@ -39,6 +58,12 @@ export function buildPreviewQuestionsFromDefinitions(
       .map((question, index) => mapQuestionDefinitionToOturumPreview(question, index + 1))
       .filter((question) => !isEkiciProducerQuestion(question)),
   )
+}
+
+/** Oturumdaki tüm sorular (bağlı dahil, gorunur=false olanlar da). */
+export function getAllOturumQuestions(oturum: AnketYanitOturumDto | undefined): AnketYanitSoruDto[] {
+  if (!oturum) return []
+  return oturum.sorular
 }
 
 export function getVisibleOturumQuestions(oturum: AnketYanitOturumDto | undefined): AnketYanitSoruDto[] {
@@ -63,7 +88,7 @@ export function getDisplayFillQuestions(questions: AnketYanitSoruDto[]): AnketYa
 export function sortOturumQuestionsForFill(questions: AnketYanitSoruDto[]): AnketYanitSoruDto[] {
   const ekiciQuestions = questions.filter(isEkiciProducerQuestion)
   const otherQuestions = questions.filter((question) => !isEkiciProducerQuestion(question))
-  return [...ekiciQuestions, ...otherQuestions]
+  return [...ekiciQuestions, ...sortQuestionsUnderParents(otherQuestions)]
 }
 
 export function getCurrentOturumQuestion(
@@ -77,8 +102,9 @@ function isQuestionAnswered(
   question: AnketYanitSoruDto,
   value: string,
   answerTypeLookup?: AnswerTypeKindLookup,
+  useManualEntry = false,
 ): boolean {
-  const kind = resolveQuestionInputKind(question, answerTypeLookup)
+  const kind = resolveEffectiveQuestionInputKind(question, answerTypeLookup, useManualEntry)
 
   if (kind === 'checkbox') {
     return value === 'true'
@@ -110,12 +136,19 @@ export function getFormFillProgress(
   questions: AnketYanitSoruDto[],
   answers: Record<string, string>,
   answerTypeLookup?: AnswerTypeKindLookup,
+  manualEntryByKey: Record<string, boolean> = {},
 ) {
   const total = questions.length
   const answered = questions.filter((question) => {
-    const value = answers[getQuestionKey(question)] ?? ''
+    const key = getQuestionKey(question)
+    const value = answers[key] ?? ''
     return (
-      isQuestionAnswered(question, value, answerTypeLookup) || hasPersistedAnswer(question)
+      isQuestionAnswered(
+        question,
+        value,
+        answerTypeLookup,
+        manualEntryByKey[key] ?? false,
+      ) || hasPersistedAnswer(question)
     )
   }).length
 
@@ -127,7 +160,7 @@ export function getInitialAnswerValue(
   sessionEkiciId?: string | null,
   answerTypeLookup?: AnswerTypeKindLookup,
 ): string {
-  const kind = resolveQuestionInputKind(soru, answerTypeLookup)
+  const kind = resolveEffectiveQuestionInputKind(soru, answerTypeLookup, false)
 
   if (kind === 'ekici') {
     return soru.ekiciId ?? sessionEkiciId ?? ''

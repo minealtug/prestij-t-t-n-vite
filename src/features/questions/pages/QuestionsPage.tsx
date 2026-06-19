@@ -12,11 +12,17 @@ import {
   useDeleteQuestion,
   useQuestions,
   useSetQuestionActive,
+  useUpdateBagliKosul,
   useUpdateQuestion,
 } from '../hooks/use-questions'
 import { useCreateSurvey, useSurveys } from '@/features/surveys/hooks/use-surveys'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { useRequirePagePermission } from '@/features/permissions/hooks/use-require-page-permission'
+import {
+  BAGLI_KOSUL_ESIT,
+  BAGLI_KOSUL_TIPI_OPTIONS,
+  normalizeBagliKosulTipi,
+} from '../utils/bagli-kosul-tipi'
 import type { QuestionDto } from '../types/question.types'
 
 export function QuestionsPage() {
@@ -26,6 +32,7 @@ export function QuestionsPage() {
   const surveysQuery = useSurveys()
   const createSurvey = useCreateSurvey()
   const updateQuestion = useUpdateQuestion()
+  const updateBagliKosul = useUpdateBagliKosul()
   const setQuestionActive = useSetQuestionActive()
   const deleteQuestion = useDeleteQuestion()
   const [surveyModalOpen, setSurveyModalOpen] = useState(false)
@@ -34,6 +41,7 @@ export function QuestionsPage() {
   const [selectedSurveyId, setSelectedSurveyId] = useState(0)
   const [editingQuestion, setEditingQuestion] = useState<QuestionDto | null>(null)
   const [editText, setEditText] = useState('')
+  const [editBagliKosulTipi, setEditBagliKosulTipi] = useState(BAGLI_KOSUL_ESIT)
   const questionsQuery = useQuestions(isDefinitionsPage ? selectedSurveyId : undefined)
 
   useEffect(() => {
@@ -61,29 +69,53 @@ export function QuestionsPage() {
     if (!canEdit) return
     setEditingQuestion(question)
     setEditText(question.soruMetni)
+    setEditBagliKosulTipi(normalizeBagliKosulTipi(question.bagliKosulTipi))
   }
 
   const closeEditModal = () => {
     setEditingQuestion(null)
     setEditText('')
+    setEditBagliKosulTipi(BAGLI_KOSUL_ESIT)
   }
 
-  const handleEditSave = () => {
+  const handleEditSave = async () => {
     if (!canEdit || !editingQuestion || !editText.trim()) return
-    updateQuestion.mutate(
-      {
-        id: editingQuestion.id,
-        payload: {
-          soruMetni: editText.trim(),
-          aktif: editingQuestion.aktif,
-          zorunlu: editingQuestion.zorunlu,
-          ...(editingQuestion.kaynak === 'AppDb' ? { baslikId: editingQuestion.baslikId } : {}),
-        },
-      },
-      {
-        onSuccess: () => closeEditModal(),
-      },
-    )
+
+    const textChanged = editText.trim() !== editingQuestion.soruMetni
+    const kosulChanged =
+      editingQuestion.bagliSoru &&
+      normalizeBagliKosulTipi(editBagliKosulTipi) !==
+        normalizeBagliKosulTipi(editingQuestion.bagliKosulTipi)
+
+    if (!textChanged && !kosulChanged) {
+      closeEditModal()
+      return
+    }
+
+    try {
+      if (textChanged) {
+        await updateQuestion.mutateAsync({
+          id: editingQuestion.id,
+          payload: {
+            soruMetni: editText.trim(),
+            aktif: editingQuestion.aktif,
+            zorunlu: editingQuestion.zorunlu,
+            ...(editingQuestion.kaynak === 'AppDb' ? { baslikId: editingQuestion.baslikId } : {}),
+          },
+        })
+      }
+
+      if (kosulChanged) {
+        await updateBagliKosul.mutateAsync({
+          id: editingQuestion.id,
+          payload: { bagliKosulTipi: normalizeBagliKosulTipi(editBagliKosulTipi) },
+        })
+      }
+
+      closeEditModal()
+    } catch {
+      // Hata mesajlari mutation state uzerinden gosterilir.
+    }
   }
 
   const handleSetPassive = (question: QuestionDto) => {
@@ -102,7 +134,10 @@ export function QuestionsPage() {
   }
 
   const isMutating =
-    updateQuestion.isPending || setQuestionActive.isPending || deleteQuestion.isPending
+    updateQuestion.isPending ||
+    updateBagliKosul.isPending ||
+    setQuestionActive.isPending ||
+    deleteQuestion.isPending
 
   const surveySelectOptions = (surveysQuery.data ?? []).map((survey) => ({
     key: `${survey.kaynak ?? 'unknown'}-${survey.id}`,
@@ -236,8 +271,8 @@ export function QuestionsPage() {
               İptal
             </Button>
             <Button
-              onClick={handleEditSave}
-              loading={updateQuestion.isPending}
+              onClick={() => void handleEditSave()}
+              loading={updateQuestion.isPending || updateBagliKosul.isPending}
               disabled={!editText.trim()}
             >
               Kaydet
@@ -253,9 +288,21 @@ export function QuestionsPage() {
             placeholder="Soru metni"
             required
           />
-          {updateQuestion.isError && (
+          {editingQuestion?.bagliSoru && (
+            <Select
+              label="Tetikleyici koşulu"
+              value={editBagliKosulTipi}
+              onChange={(e) => setEditBagliKosulTipi(e.target.value)}
+              options={BAGLI_KOSUL_TIPI_OPTIONS.map((option) => ({
+                key: option.value,
+                value: option.value,
+                label: option.label,
+              }))}
+            />
+          )}
+          {(updateQuestion.isError || updateBagliKosul.isError) && (
             <p className="text-sm text-red-600" role="alert">
-              {getErrorMessage(updateQuestion.error)}
+              {getErrorMessage(updateQuestion.error ?? updateBagliKosul.error)}
             </p>
           )}
         </div>

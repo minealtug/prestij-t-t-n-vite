@@ -6,6 +6,7 @@ import type {
   CreateNewLinkedQuestionRequest,
   CreateQuestionRequest,
   LinkExistingQuestionRequest,
+  UpdateBagliKosulRequest,
 } from '../types/question.types'
 
 export function useQuestions(baslikId?: number) {
@@ -98,6 +99,23 @@ export function useSetQuestionActive() {
   return useMutation({
     mutationFn: ({ id, aktif }: { id: string | number; aktif: boolean }) =>
       questionsApi.setActive(id, aktif),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['questions'] })
+    },
+  })
+}
+
+export function useUpdateBagliKosul() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string | number
+      payload: UpdateBagliKosulRequest
+    }) => questionsApi.updateBagliKosul(id, payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['questions'] })
     },

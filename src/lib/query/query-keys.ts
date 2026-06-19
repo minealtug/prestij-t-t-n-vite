@@ -20,12 +20,17 @@ export const queryKeys = {
     all: (baslikId?: number) => ['questions', { baslikId: baslikId ?? null }] as const,
     answerInputTypes: ['questions', 'answer-input-types'] as const,
     altSecenekler: ['questions', 'alt-secenekler'] as const,
+    altSeceneklerByGrup: (secenekGrupId: number) =>
+      ['questions', 'alt-secenekler', secenekGrupId] as const,
   },
   surveys: {
     all: ['surveys'] as const,
   },
   answerUnits: {
     all: ['answer-units'] as const,
+  },
+  ekiciDefinitions: {
+    all: ['ekici-definitions'] as const,
   },
   permissions: {
     menus: ['permissions', 'menus'] as const,

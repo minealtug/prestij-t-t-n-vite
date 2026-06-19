@@ -21,6 +21,7 @@ function getEkiciFullName(ad: string, soyad: string): string {
 export function MySurveyResponsesPage() {
   const { canRead, loading: permissionLoading } = useRequirePagePermission()
   const userId = useAuthStore((state) => state.user?.id)
+  const authUser = useAuthStore((state) => state.user)
   const responsesQuery = useMySurveyResponses(userId)
 
   const [anketAdiDraft, setAnketAdiDraft] = useState('')
@@ -28,7 +29,17 @@ export function MySurveyResponsesPage() {
   const [anketAdiFilter, setAnketAdiFilter] = useState('')
   const [ekiciFilter, setEkiciFilter] = useState('')
 
-  const data = responsesQuery.data ?? []
+  const data = useMemo(() => {
+    const items = responsesQuery.data ?? []
+    const fallbackKullaniciAdi = authUser?.fullName?.trim() || authUser?.userName?.trim()
+    if (!fallbackKullaniciAdi) return items
+
+    return items.map((item) =>
+      item.kullaniciAdi?.trim()
+        ? item
+        : { ...item, kullaniciAdi: fallbackKullaniciAdi },
+    )
+  }, [responsesQuery.data, authUser?.fullName, authUser?.userName])
 
   const anketOptions = useMemo(() => {
     const uniqueNames = [...new Set(data.map((item) => item.baslikAdi?.trim() || item.sablonAdi?.trim() || ''))]

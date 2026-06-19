@@ -77,6 +77,40 @@ async function fetchMenseilerForAnketOnlySearch(): Promise<FilterOptionDto[]> {
   return legacy ?? []
 }
 
+function unwrapKullaniciCevapPage(raw: unknown): { items: unknown[]; totalPages: number } {
+  if (Array.isArray(raw)) {
+    return { items: raw, totalPages: 1 }
+  }
+
+  const row = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+  const itemsRaw = row.items ?? row.Items
+  const totalPagesRaw = Number(row.totalPages ?? row.TotalPages ?? 1)
+
+  return {
+    items: Array.isArray(itemsRaw) ? itemsRaw : [],
+    totalPages: Number.isFinite(totalPagesRaw) && totalPagesRaw > 0 ? totalPagesRaw : 1,
+  }
+}
+
+async function fetchKullaniciCevapOzetList(kullaniciId: string): Promise<AnketCevapOzetItem[]> {
+  const pageSize = 50
+  let page = 1
+  const allItems: unknown[] = []
+
+  while (true) {
+    const raw = await apiClient.get<unknown>(
+      `/api/AnketCevap/kullanici/${encodeURIComponent(kullaniciId)}`,
+      { page, pageSize },
+    )
+    const { items, totalPages } = unwrapKullaniciCevapPage(raw)
+    allItems.push(...items)
+    if (page >= totalPages) break
+    page += 1
+  }
+
+  return mapAndFilterAnketCevapItems(allItems, {})
+}
+
 async function fetchAnketCevapListFromApi(
   params: SurveyResponsesQueryParams,
 ): Promise<AnketCevapOzetItem[]> {
@@ -125,12 +159,7 @@ export const surveyResponsesApi = {
 
   getMyList: async (kullaniciId: string): Promise<AnketCevapOzetItem[]> =>
     withDevFallback(
-      async () => {
-        const items = await apiClient.get<unknown[]>(
-          `/api/AnketCevap/kullanici/${encodeURIComponent(kullaniciId)}`,
-        )
-        return mapAndFilterAnketCevapItems(items, {})
-      },
+      () => fetchKullaniciCevapOzetList(kullaniciId),
       () => devResponsesStore.getList({}),
     ),
 
@@ -150,6 +179,7 @@ export const surveyResponsesApi = {
         try {
           const raw = await apiClient.get<unknown>(
             `/api/AnketCevap/ekici/${encodeURIComponent(ekiciId)}/sablon/${sablonId}`,
+            baslikId != null && baslikId > 0 ? { baslikId } : undefined,
           )
           const row = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
           const responseBaslikId = Number(row.baslikId ?? row.BaslikId ?? NaN)

@@ -1,0 +1,44 @@
+import { apiClient } from '@/lib/api/api-client'
+import type {
+  CreateEkiciDefinitionRequest,
+  EkiciDefinitionDto,
+  UpdateEkiciDefinitionRequest,
+} from '../types/ekici-definition.types'
+import {
+  mapEkiciDefinitionFromApi,
+  mapEkiciDefinitionsFromApi,
+  toEkiciDefinitionPayload,
+} from '../utils/normalize-ekici-definition-api'
+
+export const ekiciDefinitionsApi = {
+  getAll: async (): Promise<EkiciDefinitionDto[]> => {
+    const raw = await apiClient.get<unknown[]>('/api/Ekici')
+    return mapEkiciDefinitionsFromApi(raw)
+  },
+
+  getById: async (id: string): Promise<EkiciDefinitionDto> => {
+    const raw = await apiClient.get<unknown>(`/api/Ekici/${id}`)
+    const mapped = mapEkiciDefinitionFromApi(raw)
+    if (!mapped) throw new Error('Ekici kaydı okunamadı.')
+    return mapped
+  },
+
+  create: async (payload: CreateEkiciDefinitionRequest): Promise<EkiciDefinitionDto> => {
+    const raw = await apiClient.post<unknown>('/api/Ekici', toEkiciDefinitionPayload(payload))
+    const mapped = mapEkiciDefinitionFromApi(raw)
+    if (!mapped) throw new Error('Ekici kaydı oluşturulamadı.')
+    return mapped
+  },
+
+  update: async (
+    id: string,
+    payload: UpdateEkiciDefinitionRequest,
+  ): Promise<EkiciDefinitionDto> => {
+    const raw = await apiClient.put<unknown>(`/api/Ekici/${id}`, toEkiciDefinitionPayload(payload))
+    const row = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {}
+    const ekiciRaw = row.ekici ?? row.Ekici ?? raw
+    const mapped = mapEkiciDefinitionFromApi(ekiciRaw)
+    if (!mapped) throw new Error('Ekici kaydı güncellenemedi.')
+    return mapped
+  },
+}

@@ -4,6 +4,11 @@ import { Table, type TableColumn } from '@/components/ui/Table'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import type { QuestionDto } from '../types/question.types'
 import { getFriendlyAnswerTypeLabel } from '../utils/answer-type-label'
+import { getBagliKosulTipiLabel } from '../utils/bagli-kosul-tipi'
+
+function resolveBaslikAdi(row: QuestionDto & { baslik?: { adi?: string | null } }) {
+  return row.baslikAdi?.trim() || row.baslik?.adi?.trim() || null
+}
 
 function getParentQuestionText(value: QuestionDto['bagliOlduguSoru']) {
   if (typeof value === 'string') {
@@ -66,7 +71,7 @@ export function QuestionsTable({
       key: 'baslikAdi',
       header: 'BAŞLIK',
       className: 'w-32',
-      render: (row) => row.baslikAdi ?? '-',
+      render: (row) => resolveBaslikAdi(row) ?? '-',
     },
     {
       key: 'soruMetni',
@@ -122,6 +127,15 @@ export function QuestionsTable({
         }
 
         return row.bagliOlduguSoruId != null ? `#${row.bagliOlduguSoruId}` : '-'
+      },
+    },
+    {
+      key: 'bagliKosulTipi',
+      header: 'TETİKLEYİCİ KOŞUL',
+      className: 'w-40',
+      render: (row) => {
+        if (!row.bagliSoru) return '-'
+        return getBagliKosulTipiLabel(row.bagliKosulTipi)
       },
     },
     ...(onEdit || onSetPassive || onDelete

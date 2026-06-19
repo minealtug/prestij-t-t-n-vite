@@ -1,5 +1,5 @@
-import { useMemo, useState, type FormEvent } from 'react'
-import { Plus, Save, Trash2 } from 'lucide-react'
+import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { Save } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
@@ -17,51 +17,32 @@ import {
   useQuestions,
 } from '../hooks/use-questions'
 import type {
-  CreateLinkedQuestionPayload,
-  CreateNewLinkedQuestionRequest,
   CreateQuestionRequest,
   LinkedQuestionMigrateResultDto,
   QuestionConnectionDto,
 } from '../types/question.types'
 import { getFriendlyAnswerTypeLabel } from '../utils/answer-type-label'
 import { needsSecenekGrup } from '../utils/needs-secenek-grup'
-import { buildAltSecenekOptions } from '../utils/build-alt-secenek-options'
+import { mapLinkedChildren } from '../utils/map-linked-children'
+import { BAGLI_KOSUL_ESIT, BAGLI_KOSUL_TIPI_OPTIONS, normalizeBagliKosulTipi } from '../utils/bagli-kosul-tipi'
+import { clearLinkedChildTriggers } from '../utils/clear-linked-child-triggers'
+import { AltSecenekSelect } from './AltSecenekSelect'
+import {
+  LinkedChildEditor,
+  type LinkedChildDraft,
+} from './LinkedChildEditor'
 
 type LinkedMode = 'yeni' | 'mevcut'
-
-interface LinkedChildDraft {
-  key: string
-  cevapGirdiTipId: string
-  bagliAltSecenekId: string
-  soruMetni: string
-  zorunlu: boolean
-  aktif: boolean
-}
 
 const defaultForm = {
   baslikId: '',
   cevapGirdiTipId: '',
   secenekGrupId: '',
-  altSecenekId: '',
   anketCevapBirimId: '',
   soruMetni: '',
   zorunlu: true,
   aktif: true,
   bagliSoru: false,
-}
-
-let linkedChildKey = 0
-
-function createLinkedChildDraft(): LinkedChildDraft {
-  linkedChildKey += 1
-  return {
-    key: `linked-child-${linkedChildKey}`,
-    cevapGirdiTipId: '',
-    bagliAltSecenekId: '',
-    soruMetni: '',
-    zorunlu: true,
-    aktif: true,
-  }
 }
 
 interface QuestionFormProps {
@@ -82,6 +63,7 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
   const [parentQuestionId, setParentQuestionId] = useState('')
   const [existingLinkedQuestionId, setExistingLinkedQuestionId] = useState('')
   const [bagliAltSecenekId, setBagliAltSecenekId] = useState('')
+  const [bagliKosulTipi, setBagliKosulTipi] = useState(BAGLI_KOSUL_ESIT)
   const [linkedChildren, setLinkedChildren] = useState<LinkedChildDraft[]>([])
   const [formError, setFormError] = useState('')
   const [linkedMigrateResult, setLinkedMigrateResult] = useState<LinkedQuestionMigrateResultDto | null>(null)
@@ -153,17 +135,8 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
 
   const selectedSecenekGrupId = Number(form.secenekGrupId)
 
-  const altSecenekOptions = useMemo(
-    () =>
-      buildAltSecenekOptions(
-        secenekGruplariQuery.data ?? [],
-        Number.isFinite(selectedSecenekGrupId) && selectedSecenekGrupId > 0
-          ? selectedSecenekGrupId
-          : undefined,
-        secenekGruplariQuery.isLoading,
-      ),
-    [secenekGruplariQuery.data, secenekGruplariQuery.isLoading, selectedSecenekGrupId],
-  )
+  const getSecenekGrupLabel = (secenekGrupId?: number) =>
+    secenekGrupOptions.find((option) => Number(option.value) === secenekGrupId)?.label
 
   const selectedParentQuestion = useMemo(
     () =>
@@ -172,16 +145,6 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
   )
 
   const parentSecenekGrupId = selectedParentQuestion?.secenekGrupId ?? undefined
-
-  const parentAltSecenekOptions = useMemo(
-    () =>
-      buildAltSecenekOptions(
-        secenekGruplariQuery.data ?? [],
-        parentSecenekGrupId ?? undefined,
-        secenekGruplariQuery.isLoading,
-      ),
-    [parentSecenekGrupId, secenekGruplariQuery.data, secenekGruplariQuery.isLoading],
-  )
 
   const questionOptions = useMemo(
     () =>
@@ -214,6 +177,7 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
     setParentQuestionId('')
     setExistingLinkedQuestionId('')
     setBagliAltSecenekId('')
+    setBagliKosulTipi(BAGLI_KOSUL_ESIT)
     setLinkedChildren([])
     setFormError('')
   }
@@ -236,46 +200,16 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
     ...(secenekGrupId != null && secenekGrupId > 0 ? { secenekGrupId } : {}),
   })
 
-  const mapLinkedChildren = (
+  const mapLinkedChildrenFromDrafts = (
     children: LinkedChildDraft[],
-    mainSecenekGrupId?: number,
-  ): CreateLinkedQuestionPayload[] | null => {
-    const mapped: CreateLinkedQuestionPayload[] = []
-
-    for (const child of children) {
-      const cevapGirdiTipId = Number(child.cevapGirdiTipId)
-      const soruMetni = child.soruMetni.trim()
-      const parsedBagliAltSecenekId = Number(child.bagliAltSecenekId)
-      const bagliAltSecenekId =
-        Number.isFinite(parsedBagliAltSecenekId) && parsedBagliAltSecenekId > 0
-          ? parsedBagliAltSecenekId
-          : undefined
-
-      if (!Number.isFinite(cevapGirdiTipId) || cevapGirdiTipId <= 0) {
-        setFormError('Bağlı sorular için geçerli cevap tipi seçin.')
-        return null
-      }
-      if (!soruMetni) {
-        setFormError('Bağlı soru metni boş olamaz.')
-        return null
-      }
-      if (mainSecenekGrupId && !bagliAltSecenekId) {
-        setFormError('Bağlı sorular için alt seçenek seçmelisiniz.')
-        return null
-      }
-
-      mapped.push({
-        cevapGirdiTipId,
-        soruMetni,
-        zorunlu: child.zorunlu,
-        aktif: child.aktif,
-        ...(bagliAltSecenekId ? { bagliAltSecenekId } : {}),
-        ...(mainSecenekGrupId ? { secenekGrupId: mainSecenekGrupId } : {}),
-      })
-    }
-
-    return mapped
-  }
+    parentSecenekGrupId?: number,
+  ) =>
+    mapLinkedChildren(
+      children,
+      parentSecenekGrupId,
+      answerInputTypesQuery.data ?? [],
+      setFormError,
+    )
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
@@ -309,17 +243,13 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
           ? parsedBagliAltSecenekId
           : undefined
 
-      if (parentSecenekGrupId && !bagliAltSecenekIdValue) {
-        setFormError('Bağlı sorunun hangi alt seçenekte görüneceğini seçmelisiniz.')
-        return
-      }
-
       linkExistingQuestion.mutate(
         {
           parentId: parsedParentQuestionId,
           payload: {
             bagliSoruId: parsedExistingQuestionId,
             ...(bagliAltSecenekIdValue ? { bagliAltSecenekId: bagliAltSecenekIdValue } : {}),
+            bagliKosulTipi: normalizeBagliKosulTipi(bagliKosulTipi),
           },
         },
         {
@@ -374,17 +304,19 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
         : undefined
 
     if (form.bagliSoru) {
-      if (parentSecenekGrupId && !bagliAltSecenekIdValue) {
-        setFormError('Bağlı sorunun hangi alt seçenekte görüneceğini seçmelisiniz.')
-        return
-      }
-
       if (selectedParentQuestion?.kaynak === 'LegacyDb') {
+        const bagliSorular =
+          linkedChildren.length > 0
+            ? mapLinkedChildrenFromDrafts(linkedChildren, parentSecenekGrupId ?? undefined)
+            : undefined
+        if (linkedChildren.length > 0 && !bagliSorular) return
+
         createLinkedQuestionWithMigrate.mutate(
           {
             ...questionFields,
             parentLegacyQuestionId: parsedParentQuestionId,
             ...(bagliAltSecenekIdValue ? { bagliLegacyAltSecenekId: bagliAltSecenekIdValue } : {}),
+            bagliKosulTipi: normalizeBagliKosulTipi(bagliKosulTipi),
           },
           {
             onSuccess: (result) => {
@@ -396,12 +328,25 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
         return
       }
 
+      const bagliSorular =
+        linkedChildren.length > 0
+          ? mapLinkedChildrenFromDrafts(
+              linkedChildren,
+              Number.isFinite(selectedSecenekGrupId) && selectedSecenekGrupId > 0
+                ? selectedSecenekGrupId
+                : undefined,
+            )
+          : undefined
+      if (linkedChildren.length > 0 && !bagliSorular) return
+
       createNewLinkedQuestion.mutate(
         {
           parentId: parsedParentQuestionId,
           payload: {
             ...questionFields,
             ...(bagliAltSecenekIdValue ? { bagliAltSecenekId: bagliAltSecenekIdValue } : {}),
+            bagliKosulTipi: normalizeBagliKosulTipi(bagliKosulTipi),
+            ...(bagliSorular ? { bagliSorular } : {}),
           },
         },
         {
@@ -412,7 +357,7 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
     }
 
     const bagliSorular =
-      linkedChildren.length > 0 ? mapLinkedChildren(linkedChildren, secenekGrupId) : undefined
+      linkedChildren.length > 0 ? mapLinkedChildrenFromDrafts(linkedChildren, secenekGrupId) : undefined
     if (linkedChildren.length > 0 && !bagliSorular) return
 
     const payload: CreateQuestionRequest = {
@@ -432,7 +377,153 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
     linkExistingQuestion.error ??
     createLinkedQuestionWithMigrate.error
 
-  const showQuestionFields = !form.bagliSoru || linkedMode === 'yeni'
+  const showMainQuestionFields = !form.bagliSoru
+  const showLinkedChildrenSection =
+    !form.bagliSoru || (form.bagliSoru && linkedMode === 'yeni')
+
+  const renderQuestionFields = (
+    idPrefix = '',
+    trigger?: {
+      secenekGrupId?: number
+      value: string
+      onChange: (value: string) => void
+    },
+  ): ReactNode => (
+    <div className="space-y-4">
+      {trigger ? (
+        <div className="space-y-2">
+          <AltSecenekSelect
+            key={`trigger-${idPrefix}-${trigger.secenekGrupId ?? 'none'}`}
+            id={`${idPrefix}trigger`}
+            secenekGrupId={trigger.secenekGrupId}
+            label={
+              trigger.secenekGrupId
+                ? `Tetikleyici (üst soru: ${getSecenekGrupLabel(trigger.secenekGrupId) ?? `Grup ${trigger.secenekGrupId}`})`
+                : 'Tetikleyici alt seçenek'
+            }
+            value={trigger.value}
+            onChange={trigger.onChange}
+            disabled={secenekGruplariQuery.isLoading || !trigger.secenekGrupId}
+            required={Boolean(trigger.secenekGrupId)}
+          />
+          {trigger.secenekGrupId ? (
+            <>
+              <Select
+                label="Tetikleyici koşulu"
+                value={bagliKosulTipi}
+                onChange={(e) => setBagliKosulTipi(e.target.value)}
+                options={BAGLI_KOSUL_TIPI_OPTIONS}
+              />
+              <p className="text-xs text-muted">
+                Bu soru, üst soruda &quot;{getSecenekGrupLabel(trigger.secenekGrupId) ?? `Grup ${trigger.secenekGrupId}`}&quot;
+                grubundan seçilen cevap verildiğinde görünür.
+                {bagliKosulTipi === 'buyuk_esit'
+                  ? ' En az (≥): seçilen değer eşik ve üzerindeyse soru açılır.'
+                  : ' Eşit (=): yalnızca seçilen tetikleyiciyle birebir eşleşince açılır.'}
+              </p>
+            </>
+          ) : null}
+        </div>
+      ) : null}
+
+      <Textarea
+        label="Soru"
+        value={form.soruMetni}
+        onChange={(e) => setForm((f) => ({ ...f, soruMetni: e.target.value }))}
+        placeholder="Soru metnini yazın"
+        required
+      />
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Select
+          label="Cevap Tipi"
+          value={form.cevapGirdiTipId}
+          onChange={(e) =>
+            setForm((f) => ({
+              ...f,
+              cevapGirdiTipId: e.target.value,
+              secenekGrupId: '',
+            }))
+          }
+          options={cevapTipiOptions}
+          disabled={answerInputTypesQuery.isLoading}
+          required
+        />
+
+        <Select
+          label={trigger ? 'Bu sorunun cevap seçenek grubu' : 'Seçenek Grup'}
+          value={form.secenekGrupId}
+          onChange={(e) => {
+            setForm((f) => ({
+              ...f,
+              secenekGrupId: e.target.value,
+            }))
+            setLinkedChildren((items) => clearLinkedChildTriggers(items))
+          }}
+          options={secenekGrupOptions}
+          disabled={secenekGruplariQuery.isLoading}
+          required={showSecenekGrup}
+        />
+        <Select
+          label="Birim"
+          value={form.anketCevapBirimId}
+          onChange={(e) => setForm((f) => ({ ...f, anketCevapBirimId: e.target.value }))}
+          options={birimOptions}
+          disabled={answerUnitsQuery.isLoading}
+        />
+      </div>
+
+      <div className="flex flex-wrap gap-6">
+        <label className="flex cursor-pointer items-center gap-3">
+          <input
+            id={`${idPrefix}zorunlu`}
+            type="checkbox"
+            checked={form.zorunlu}
+            onChange={(e) => setForm((f) => ({ ...f, zorunlu: e.target.checked }))}
+            className="h-4 w-4 rounded border-border text-primary-500 focus:ring-primary-500"
+          />
+          <span className="text-sm text-foreground">Zorunlu</span>
+        </label>
+
+        <label className="flex cursor-pointer items-center gap-3">
+          <input
+            id={`${idPrefix}aktif`}
+            type="checkbox"
+            checked={form.aktif}
+            onChange={(e) => setForm((f) => ({ ...f, aktif: e.target.checked }))}
+            className="h-4 w-4 rounded border-border text-primary-500 focus:ring-primary-500"
+          />
+          <span className="text-sm text-foreground">Aktif</span>
+        </label>
+      </div>
+    </div>
+  )
+
+  const renderLinkedChildrenSection = (parentSecenekGrupId?: number) => (
+    <div className="space-y-4 rounded-lg border border-border bg-muted/10 p-4">
+      <div>
+        <h4 className="text-sm font-medium text-foreground">Bağlı Sorular (isteğe bağlı)</h4>
+        <p className="text-xs text-muted">
+          Bu soruya bağlı yeni alt sorular ekleyin. Her alt soru için tam soru bilgilerini
+          girebilir ve iç içe bağlantılar oluşturabilirsiniz.
+        </p>
+      </div>
+
+      <LinkedChildEditor
+        children={linkedChildren}
+        onChange={setLinkedChildren}
+        parentSecenekGrupId={parentSecenekGrupId}
+        readOnly={readOnly}
+        cevapTipiOptions={cevapTipiOptions}
+        secenekGrupOptions={secenekGrupOptions}
+        birimOptions={birimOptions}
+        answerInputTypes={answerInputTypesQuery.data ?? []}
+        secenekGruplariLoading={secenekGruplariQuery.isLoading}
+        answerInputTypesLoading={answerInputTypesQuery.isLoading}
+        answerUnitsLoading={answerUnitsQuery.isLoading}
+      />
+    </div>
+  )
 
   return (
     <Card className="border-primary-500/20">
@@ -455,84 +546,16 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
             options={surveyOptions}
             required
           />
-          {showQuestionFields && (
-            <Select
-              label="Cevap Tipi"
-              value={form.cevapGirdiTipId}
-              onChange={(e) => setForm((f) => ({ ...f, cevapGirdiTipId: e.target.value }))}
-              options={cevapTipiOptions}
-              disabled={answerInputTypesQuery.isLoading}
-              required
-            />
-          )}
-          {showQuestionFields && (
-            <Select
-              label="Seçenek Grup"
-              value={form.secenekGrupId}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  secenekGrupId: e.target.value,
-                  altSecenekId: '',
-                }))
-              }
-              options={secenekGrupOptions}
-              disabled={secenekGruplariQuery.isLoading}
-              required={showSecenekGrup}
-            />
-          )}
-          {showQuestionFields && form.secenekGrupId && (
-            <Select
-              label="Alt Seçenek"
-              value={form.altSecenekId}
-              onChange={(e) => setForm((f) => ({ ...f, altSecenekId: e.target.value }))}
-              options={altSecenekOptions}
-              disabled={secenekGruplariQuery.isLoading}
-            />
-          )}
-          {showQuestionFields && (
-            <Select
-              label="Birim"
-              value={form.anketCevapBirimId}
-              onChange={(e) => setForm((f) => ({ ...f, anketCevapBirimId: e.target.value }))}
-              options={birimOptions}
-              disabled={answerUnitsQuery.isLoading}
-            />
-          )}
         </div>
 
-        {showQuestionFields && (
-          <Textarea
-            label="Soru"
-            value={form.soruMetni}
-            onChange={(e) => setForm((f) => ({ ...f, soruMetni: e.target.value }))}
-            placeholder="Soru metnini yazın"
-            required
-          />
-        )}
+        {showMainQuestionFields && renderQuestionFields('main-')}
 
-        {showQuestionFields && (
-          <div className="flex flex-wrap gap-6">
-            <label className="flex cursor-pointer items-center gap-3">
-              <input
-                type="checkbox"
-                checked={form.zorunlu}
-                onChange={(e) => setForm((f) => ({ ...f, zorunlu: e.target.checked }))}
-                className="h-4 w-4 rounded border-border text-primary-500 focus:ring-primary-500"
-              />
-              <span className="text-sm text-foreground">Zorunlu</span>
-            </label>
-
-            <label className="flex cursor-pointer items-center gap-3">
-              <input
-                type="checkbox"
-                checked={form.aktif}
-                onChange={(e) => setForm((f) => ({ ...f, aktif: e.target.checked }))}
-                className="h-4 w-4 rounded border-border text-primary-500 focus:ring-primary-500"
-              />
-              <span className="text-sm text-foreground">Aktif</span>
-            </label>
-          </div>
+        {showMainQuestionFields && showLinkedChildrenSection && (
+          renderLinkedChildrenSection(
+            Number.isFinite(selectedSecenekGrupId) && selectedSecenekGrupId > 0
+              ? selectedSecenekGrupId
+              : undefined,
+          )
         )}
 
         <label className="flex cursor-pointer items-center gap-3">
@@ -554,7 +577,9 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
             }}
             className="h-4 w-4 rounded border-border text-primary-500 focus:ring-primary-500"
           />
-          <span className="text-sm text-foreground">Bağlı Soru</span>
+          <span className="text-sm text-foreground">
+            Bağlı Soru (mevcut bir soruya bağlanacak)
+          </span>
         </label>
 
         {form.bagliSoru && (
@@ -570,7 +595,9 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
                   type="radio"
                   name="linked-mode"
                   checked={linkedMode === 'yeni'}
-                  onChange={() => setLinkedMode('yeni')}
+                  onChange={() => {
+                    setLinkedMode('yeni')
+                  }}
                   className="h-4 w-4 border-border text-primary-500 focus:ring-primary-500"
                 />
                 <span className="text-sm text-foreground">Yeni bağlı soru oluştur</span>
@@ -580,7 +607,10 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
                   type="radio"
                   name="linked-mode"
                   checked={linkedMode === 'mevcut'}
-                  onChange={() => setLinkedMode('mevcut')}
+                  onChange={() => {
+                    setLinkedMode('mevcut')
+                    setLinkedChildren([])
+                  }}
                   className="h-4 w-4 border-border text-primary-500 focus:ring-primary-500"
                 />
                 <span className="text-sm text-foreground">Mevcut soruyu bağla</span>
@@ -593,6 +623,7 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
               onChange={(e) => {
                 setParentQuestionId(e.target.value)
                 setBagliAltSecenekId('')
+                setBagliKosulTipi(BAGLI_KOSUL_ESIT)
                 if (e.target.value === existingLinkedQuestionId) {
                   setExistingLinkedQuestionId('')
                 }
@@ -601,6 +632,43 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
               disabled={!form.baslikId || questionsBySurveyQuery.isLoading}
               required
             />
+
+            {linkedMode === 'mevcut' && parentQuestionId && (
+              <div className="space-y-2">
+                <AltSecenekSelect
+                  key={`link-existing-trigger-${parentSecenekGrupId ?? 'none'}`}
+                  id="link-existing-trigger"
+                  secenekGrupId={parentSecenekGrupId}
+                  label={
+                    parentSecenekGrupId
+                      ? `Tetikleyici (üst soru: ${getSecenekGrupLabel(parentSecenekGrupId) ?? `Grup ${parentSecenekGrupId}`})`
+                      : 'Tetikleyici alt seçenek'
+                  }
+                  value={bagliAltSecenekId}
+                  onChange={setBagliAltSecenekId}
+                  disabled={secenekGruplariQuery.isLoading || !parentSecenekGrupId}
+                  required={Boolean(parentSecenekGrupId)}
+                />
+                {parentSecenekGrupId ? (
+                  <>
+                    <Select
+                      label="Tetikleyici koşulu"
+                      value={bagliKosulTipi}
+                      onChange={(e) => setBagliKosulTipi(e.target.value)}
+                      options={BAGLI_KOSUL_TIPI_OPTIONS}
+                    />
+                    <p className="text-xs text-muted">
+                      Bağlanacak soru, üst soruda &quot;
+                      {getSecenekGrupLabel(parentSecenekGrupId) ?? `Grup ${parentSecenekGrupId}`}&quot;
+                      grubundan seçilen cevap verildiğinde görünür.
+                      {bagliKosulTipi === 'buyuk_esit'
+                        ? ' En az (≥): seçilen değer eşik ve üzerindeyse soru açılır.'
+                        : ' Eşit (=): yalnızca seçilen tetikleyiciyle birebir eşleşince açılır.'}
+                    </p>
+                  </>
+                ) : null}
+              </div>
+            )}
 
             {linkedMode === 'mevcut' && (
               <Select
@@ -613,146 +681,19 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
               />
             )}
 
-            {parentSecenekGrupId && (
-              <Select
-                label="Alt Seçenek"
-                value={bagliAltSecenekId}
-                onChange={(e) => setBagliAltSecenekId(e.target.value)}
-                options={parentAltSecenekOptions}
-                disabled={secenekGruplariQuery.isLoading}
-                required
-              />
-            )}
-          </div>
-        )}
-
-        {!form.bagliSoru && (
-          <div className="space-y-4 rounded-lg border border-border bg-muted/20 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h4 className="text-sm font-medium text-foreground">Bağlı Sorular (isteğe bağlı)</h4>
-                <p className="text-xs text-muted">
-                  Ana soru ile birlikte yeni bağlı sorular oluşturmak için ekleyin.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={readOnly}
-                onClick={() => setLinkedChildren((items) => [...items, createLinkedChildDraft()])}
-              >
-                <Plus className="h-4 w-4" />
-                Bağlı soru ekle
-              </Button>
-            </div>
-
-            {linkedChildren.length === 0 ? (
-              <p className="text-sm text-muted">Henüz bağlı soru eklenmedi.</p>
-            ) : (
-              <div className="space-y-3">
-                {linkedChildren.map((child, index) => (
-                  <div key={child.key} className="space-y-3 rounded-lg border border-border bg-background p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-medium text-foreground">Bağlı soru {index + 1}</p>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="!h-8 !px-2 text-red-600"
-                        disabled={readOnly}
-                        onClick={() =>
-                          setLinkedChildren((items) => items.filter((item) => item.key !== child.key))
-                        }
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Kaldır
-                      </Button>
-                    </div>
-
-                    <Select
-                      label="Cevap Tipi"
-                      value={child.cevapGirdiTipId}
-                      onChange={(e) =>
-                        setLinkedChildren((items) =>
-                          items.map((item) =>
-                            item.key === child.key ? { ...item, cevapGirdiTipId: e.target.value } : item,
-                          ),
-                        )
-                      }
-                      options={cevapTipiOptions}
-                      disabled={answerInputTypesQuery.isLoading}
-                      required
-                    />
-
-                    {form.secenekGrupId && (
-                      <Select
-                        label="Alt Seçenek"
-                        value={child.bagliAltSecenekId}
-                        onChange={(e) =>
-                          setLinkedChildren((items) =>
-                            items.map((item) =>
-                              item.key === child.key
-                                ? { ...item, bagliAltSecenekId: e.target.value }
-                                : item,
-                            ),
-                          )
-                        }
-                        options={altSecenekOptions}
-                        disabled={secenekGruplariQuery.isLoading}
-                        required
-                      />
-                    )}
-
-                    <Textarea
-                      label="Soru"
-                      value={child.soruMetni}
-                      onChange={(e) =>
-                        setLinkedChildren((items) =>
-                          items.map((item) =>
-                            item.key === child.key ? { ...item, soruMetni: e.target.value } : item,
-                          ),
-                        )
-                      }
-                      placeholder="Bağlı soru metnini yazın"
-                      required
-                    />
-
-                    <div className="flex flex-wrap gap-6">
-                      <label className="flex cursor-pointer items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={child.zorunlu}
-                          onChange={(e) =>
-                            setLinkedChildren((items) =>
-                              items.map((item) =>
-                                item.key === child.key ? { ...item, zorunlu: e.target.checked } : item,
-                              ),
-                            )
-                          }
-                          className="h-4 w-4 rounded border-border text-primary-500 focus:ring-primary-500"
-                        />
-                        <span className="text-sm text-foreground">Zorunlu</span>
-                      </label>
-
-                      <label className="flex cursor-pointer items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={child.aktif}
-                          onChange={(e) =>
-                            setLinkedChildren((items) =>
-                              items.map((item) =>
-                                item.key === child.key ? { ...item, aktif: e.target.checked } : item,
-                              ),
-                            )
-                          }
-                          className="h-4 w-4 rounded border-border text-primary-500 focus:ring-primary-500"
-                        />
-                        <span className="text-sm text-foreground">Aktif</span>
-                      </label>
-                    </div>
-                  </div>
-                ))}
+            {linkedMode === 'yeni' && (
+              <div className="space-y-4 border-t border-border pt-4">
+                <h4 className="text-sm font-medium text-foreground">Yeni Bağlı Soru Bilgileri</h4>
+                {renderQuestionFields('linked-', {
+                  secenekGrupId: parentSecenekGrupId,
+                  value: bagliAltSecenekId,
+                  onChange: setBagliAltSecenekId,
+                })}
+                {renderLinkedChildrenSection(
+                  Number.isFinite(selectedSecenekGrupId) && selectedSecenekGrupId > 0
+                    ? selectedSecenekGrupId
+                    : undefined,
+                )}
               </div>
             )}
           </div>

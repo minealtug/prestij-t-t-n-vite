@@ -1,4 +1,5 @@
 import type { CevapGirdiTipDto, QuestionDto } from '@/features/questions/types/question.types'
+import { normalizeBagliKosulTipi } from '@/features/questions/utils/bagli-kosul-tipi'
 import type { AltSecenekOptionDto, AnketYanitSoruDto } from '../types/anket-yanit.types'
 import { getAnswerTypeAdiById } from './build-answer-type-kind-lookup'
 
@@ -30,7 +31,27 @@ export function enrichOturumQuestionsWithDefinitions(
       ...soru,
       cevapGirdiTipAdi,
       cevapGirdiTipId,
-      secenekGrupId: soru.secenekGrupId ?? readPositiveId(definition?.secenekGrupId),
+      secenekGrupId:
+        soru.secenekGrupId ??
+        readPositiveId(definition?.secenekGrupId) ??
+        readPositiveId((definition as QuestionDto & { SecenekGrupId?: number | null })?.SecenekGrupId),
+      bagliOlduguSoruId:
+        soru.bagliOlduguSoruId ??
+        readPositiveId(definition?.bagliOlduguSoruId) ??
+        readPositiveId(
+          (definition as QuestionDto & { BagliOlduguSoruId?: number | null })?.BagliOlduguSoruId,
+        ),
+      bagliAltSecenekId:
+        soru.bagliAltSecenekId ??
+        readPositiveId(definition?.bagliAltSecenekId) ??
+        readPositiveId(
+          (definition as QuestionDto & { BagliAltSecenekId?: number | null })?.BagliAltSecenekId,
+        ),
+      bagliKosulTipi: normalizeBagliKosulTipi(
+        soru.bagliKosulTipi ??
+          definition?.bagliKosulTipi ??
+          (definition as QuestionDto & { BagliKosulTipi?: string | null })?.BagliKosulTipi,
+      ),
     }
   })
 }
@@ -47,6 +68,7 @@ export function mergeAltSeceneklerIntoQuestions(
         ? soru.altSecenekler
         : fromGrup
 
-    return altSecenekler === soru.altSecenekler ? soru : { ...soru, altSecenekler }
+    if (altSecenekler === soru.altSecenekler) return soru
+    return { ...soru, altSecenekler }
   })
 }

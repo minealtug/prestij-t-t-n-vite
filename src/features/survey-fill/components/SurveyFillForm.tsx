@@ -29,7 +29,7 @@ import {
   buildInitialAnswersMap,
   buildPreviewQuestionsFromDefinitions,
   getDisplayFillQuestions,
-  getFillOturumQuestions,
+  getAllOturumQuestions,
   getFormFillProgress,
   getQuestionDisplayNumber,
   getQuestionsToSubmit,
@@ -38,6 +38,11 @@ import {
 import { getQuestionKey } from '../utils/question-key'
 import { resolveSurveyFillMintikaId } from '../utils/resolve-survey-fill-mintika-id'
 import { validateSurveyFillAnswers } from '../utils/validate-survey-fill-answers'
+import {
+  applyManualEntryInitialAnswers,
+  detectInitialManualEntryKeys,
+} from '../utils/manual-entry'
+import { filterVisibleQuestionsForFill } from '../utils/resolve-linked-question-visibility'
 import { SurveyFillSuccessModal } from './SurveyFillSuccessModal'
 
 interface SurveyFillFormProps {
@@ -85,6 +90,7 @@ export function SurveyFillForm({
 
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [initialAnswers, setInitialAnswers] = useState<Record<string, string>>({})
+  const [manualEntryByKey, setManualEntryByKey] = useState<Record<string, boolean>>({})
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [submitError, setSubmitError] = useState('')
 
@@ -94,7 +100,7 @@ export function SurveyFillForm({
   )
 
   const allOturumQuestions = useMemo(
-    () => sortOturumQuestionsForFill(getFillOturumQuestions(oturumQuery.data)),
+    () => sortOturumQuestionsForFill(getAllOturumQuestions(oturumQuery.data)),
     [oturumQuery.data],
   )
 
@@ -116,28 +122,41 @@ export function SurveyFillForm({
     [sourceQuestions, questionDefinitionsQuery.data, answerInputTypesQuery.data],
   )
 
-  const secenekGrupIds = useMemo(
-    () =>
-      enrichedQuestions
-        .map((question) => question.secenekGrupId)
-        .filter((id): id is number => id != null && id > 0),
-    [enrichedQuestions],
-  )
+  const secenekGrupIds = useMemo(() => {
+    const ids = new Set<number>()
+    for (const question of enrichedQuestions) {
+      if (question.secenekGrupId != null && question.secenekGrupId > 0) {
+        ids.add(question.secenekGrupId)
+      }
+    }
+    for (const question of enrichedQuestions) {
+      if (question.bagliOlduguSoruId == null) continue
+      const parent = enrichedQuestions.find((item) => item.soruId === question.bagliOlduguSoruId)
+      if (parent?.secenekGrupId != null && parent.secenekGrupId > 0) {
+        ids.add(parent.secenekGrupId)
+      }
+    }
+    return [...ids]
+  }, [enrichedQuestions])
 
   const altSeceneklerQuery = useAltSeceneklerByGrupIds(secenekGrupIds)
 
-  const visibleQuestions = useMemo(
-    () =>
-      mergeAltSeceneklerIntoQuestions(
-        enrichedQuestions,
-        altSeceneklerQuery.optionsByGrupId,
-      ),
-    [enrichedQuestions, altSeceneklerQuery.optionsByGrupId],
-  )
+  const visibleQuestions = useMemo(() => {
+    const merged = mergeAltSeceneklerIntoQuestions(
+      enrichedQuestions,
+      altSeceneklerQuery.optionsByGrupId,
+    )
+    return filterVisibleQuestionsForFill(
+      merged,
+      answers,
+      answerTypeLookup,
+      manualEntryByKey,
+    )
+  }, [enrichedQuestions, altSeceneklerQuery.optionsByGrupId, answers, answerTypeLookup, manualEntryByKey])
 
   const progress = useMemo(
-    () => getFormFillProgress(visibleQuestions, answers, answerTypeLookup),
-    [visibleQuestions, answers, answerTypeLookup],
+    () => getFormFillProgress(visibleQuestions, answers, answerTypeLookup, manualEntryByKey),
+    [visibleQuestions, answers, answerTypeLookup, manualEntryByKey],
   )
 
   const ekiciOptions = useMemo(
@@ -182,6 +201,7 @@ export function SurveyFillForm({
     setSessionEkiciId(initialEkiciId)
     setAnswers({})
     setInitialAnswers({})
+    setManualEntryByKey({})
     setFieldErrors({})
     setSubmitError('')
     setSuccessModalOpen(false)
@@ -190,12 +210,15 @@ export function SurveyFillForm({
   useEffect(() => {
     if (sessionEkiciId) {
       if (!oturumQuery.data) return
-      const questions = sortOturumQuestionsForFill(getFillOturumQuestions(oturumQuery.data))
+      const questions = sortOturumQuestionsForFill(getAllOturumQuestions(oturumQuery.data))
       if (questions.length === 0) return
 
       const nextAnswers = buildInitialAnswersMap(questions, sessionEkiciId, answerTypeLookup)
-      setAnswers(nextAnswers)
-      setInitialAnswers(nextAnswers)
+      const manualKeys = detectInitialManualEntryKeys(questions, nextAnswers)
+      const answersWithManual = applyManualEntryInitialAnswers(questions, nextAnswers, manualKeys)
+      setManualEntryByKey(manualKeys)
+      setAnswers(answersWithManual)
+      setInitialAnswers(answersWithManual)
       setFieldErrors({})
       setSubmitError('')
       return
@@ -204,8 +227,11 @@ export function SurveyFillForm({
     if (templateQuestions.length === 0) return
 
     const nextAnswers = buildInitialAnswersMap(templateQuestions, null, answerTypeLookup)
-    setAnswers(nextAnswers)
-    setInitialAnswers(nextAnswers)
+    const manualKeys = detectInitialManualEntryKeys(templateQuestions, nextAnswers)
+    const answersWithManual = applyManualEntryInitialAnswers(templateQuestions, nextAnswers, manualKeys)
+    setManualEntryByKey(manualKeys)
+    setAnswers(answersWithManual)
+    setInitialAnswers(answersWithManual)
     setFieldErrors({})
     setSubmitError('')
   }, [
@@ -227,6 +253,7 @@ export function SurveyFillForm({
     setSessionEkiciId(value || null)
     setAnswers({})
     setInitialAnswers({})
+    setManualEntryByKey({})
     setFieldErrors({})
     setSubmitError('')
   }
@@ -240,6 +267,28 @@ export function SurveyFillForm({
       return next
     })
     if (submitError) setSubmitError('')
+  }
+
+  const handleEnableManualEntry = (key: string) => {
+    setManualEntryByKey((prev) => ({ ...prev, [key]: true }))
+    setAnswers((prev) => ({ ...prev, [key]: '' }))
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+  }
+
+  const handleDisableManualEntry = (key: string) => {
+    setManualEntryByKey((prev) => ({ ...prev, [key]: false }))
+    setAnswers((prev) => ({ ...prev, [key]: '' }))
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
   }
 
   const handleSubmitAnswers = () => {
@@ -257,6 +306,7 @@ export function SurveyFillForm({
       visibleQuestions,
       answers,
       answerTypeLookup,
+      manualEntryByKey,
     )
     if (Object.keys(validationErrors).length > 0) {
       setFieldErrors(validationErrors)
@@ -293,6 +343,7 @@ export function SurveyFillForm({
         question,
         answers[getQuestionKey(question)] ?? '',
         answerTypeLookup,
+        manualEntryByKey[getQuestionKey(question)] ?? false,
       ),
     )
 
@@ -402,6 +453,9 @@ export function SurveyFillForm({
             selectLoading={altSeceneklerQuery.isLoading}
             answerTypeLookup={answerTypeLookup}
             disabled={questionsDisabled}
+            useManualEntry={manualEntryByKey[key] ?? false}
+            onEnableManualEntry={() => handleEnableManualEntry(key)}
+            onDisableManualEntry={() => handleDisableManualEntry(key)}
           />
         )
       })}

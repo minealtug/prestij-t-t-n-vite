@@ -21,9 +21,14 @@ function asRecord(raw: unknown): Record<string, unknown> {
 function normalizeCevapDeger(raw: unknown): AnketCevapDegerDto | null {
   if (!raw || typeof raw !== 'object') return null
   const row = raw as Record<string, unknown>
+  const cevapNumericRaw = Number(pick(row, 'cevapNumeric', 'CevapNumeric') ?? NaN)
+
   return {
     cevapAltSecenekAdi: pick(row, 'cevapAltSecenekAdi', 'CevapAltSecenekAdi') ?? null,
     cevapText: pick(row, 'cevapText', 'CevapText') ?? null,
+    cevapGosterimMetni: pick(row, 'cevapGosterimMetni', 'CevapGosterimMetni') ?? null,
+    cevapDatetime: pick(row, 'cevapDatetime', 'CevapDatetime') ?? null,
+    cevapNumeric: Number.isFinite(cevapNumericRaw) ? cevapNumericRaw : null,
   }
 }
 

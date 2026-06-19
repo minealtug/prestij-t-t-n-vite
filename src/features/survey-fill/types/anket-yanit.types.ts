@@ -7,6 +7,7 @@ export interface AnketSablonDto {
 export interface AltSecenekOptionDto {
   id: number
   adi: string
+  siraNo?: number | null
 }
 
 export interface AnketYanitSoruDto {
@@ -17,6 +18,9 @@ export interface AnketYanitSoruDto {
   gorunur: boolean
   zorunlu: boolean
   bagliSoru: boolean
+  bagliOlduguSoruId?: number | null
+  bagliAltSecenekId?: number | null
+  bagliKosulTipi?: string | null
   cevapGirdiTipAdi: string | null
   cevapGirdiTipId: number | null
   secenekGrupId: number | null
@@ -58,6 +62,28 @@ export interface AnketYanitCevapRequest {
   birimId?: number | null
 }
 
+export interface AnketYanitCevapBatchRequest {
+  baslikId: number
+  sablonId: number
+  ekiciId: string
+  mintikaId: number
+  cevaplar: AnketYanitCevapBatchItem[]
+}
+
+export interface AnketYanitCevapBatchItem {
+  soruId: number
+  cevapText?: string | null
+  cevapNumeric?: number | null
+  cevapDatetime?: string | null
+  cevapAltSecenekId?: number | null
+  birimId?: number | null
+}
+
+export interface AnketYanitCevapBatchResponse {
+  savedCount: number
+  tamamlanabilir?: unknown
+}
+
 /** Soru alanı bileşenlerinde kullanılan ortak görünüm modeli. */
 export interface SurveyFillSoruView {
   soruId: number
@@ -65,6 +91,9 @@ export interface SurveyFillSoruView {
   altSoruMetni?: string | null
   zorunlu: boolean
   bagliSoru?: boolean
+  bagliOlduguSoruId?: number | null
+  bagliAltSecenekId?: number | null
+  bagliKosulTipi?: string | null
   cevapGirdiTipAdi?: string | null
   cevapGirdiTipId?: number | null
   secenekGrupId?: number | null

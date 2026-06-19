@@ -20,7 +20,10 @@ export function mapAltSecenekFromApi(raw: unknown): AltSecenekOptionDto | null {
   const adi = String(pick(row, 'adi', 'Adi') ?? '').trim()
   if (!adi) return null
 
-  return { id, adi }
+  const siraNoRaw = Number(pick(row, 'siraNo', 'SiraNo'))
+  const siraNo = Number.isFinite(siraNoRaw) && siraNoRaw > 0 ? siraNoRaw : null
+
+  return { id, adi, siraNo }
 }
 
 export function mapAltSeceneklerFromApi(raw: unknown): AltSecenekOptionDto[] {
@@ -30,14 +33,24 @@ export function mapAltSeceneklerFromApi(raw: unknown): AltSecenekOptionDto[] {
 
 export function mapAltSeceneklerListFromApi(raw: unknown[]): AltSecenekOptionDto[] {
   const seen = new Set<number>()
-  const options: AltSecenekOptionDto[] = []
+  const options: Array<AltSecenekOptionDto & { siraNo: number }> = []
 
   for (const item of raw) {
     const mapped = mapAltSecenekFromApi(item)
     if (!mapped || seen.has(mapped.id)) continue
     seen.add(mapped.id)
-    options.push(mapped)
+    const row = asRecord(item)
+    const siraNo = Number(pick(row, 'siraNo', 'SiraNo') ?? 0)
+    options.push({
+      ...mapped,
+      siraNo: Number.isFinite(siraNo) ? siraNo : 0,
+    })
   }
 
-  return options.sort((a, b) => a.adi.localeCompare(b.adi, 'tr-TR'))
+  return options
+    .sort((a, b) => {
+      if (a.siraNo !== b.siraNo) return a.siraNo - b.siraNo
+      return a.adi.localeCompare(b.adi, 'tr-TR')
+    })
+    .map(({ id, adi, siraNo }) => ({ id, adi, siraNo: siraNo > 0 ? siraNo : null }))
 }

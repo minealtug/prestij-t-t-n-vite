@@ -1,6 +1,6 @@
 import type { AnketYanitCevapRequest, AnketYanitSoruDto } from '../types/anket-yanit.types'
 import type { AnswerTypeKindLookup } from './build-answer-type-kind-lookup'
-import { resolveQuestionInputKind } from './resolve-question-input-kind'
+import { resolveEffectiveQuestionInputKind } from './resolve-question-input-kind'
 
 export function buildAnketYanitCevapRequest(
   baslikId: number,
@@ -10,8 +10,9 @@ export function buildAnketYanitCevapRequest(
   soru: AnketYanitSoruDto,
   value: string,
   answerTypeLookup?: AnswerTypeKindLookup,
+  useManualEntry = false,
 ): AnketYanitCevapRequest {
-  const kind = resolveQuestionInputKind(soru, answerTypeLookup)
+  const kind = resolveEffectiveQuestionInputKind(soru, answerTypeLookup, useManualEntry)
   const base: AnketYanitCevapRequest = {
     baslikId,
     sablonId,

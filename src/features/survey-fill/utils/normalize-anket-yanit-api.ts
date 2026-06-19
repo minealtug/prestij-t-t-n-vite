@@ -1,3 +1,4 @@
+import { normalizeBagliKosulTipi } from '@/features/questions/utils/bagli-kosul-tipi'
 import type {
   AnketSablonDto,
   AnketYanitOturumDto,
@@ -82,6 +83,12 @@ function readAltSecenekler(raw: unknown) {
   return mapAltSeceneklerFromApi(raw)
 }
 
+function readAltSeceneklerFromFields(row: Record<string, unknown>) {
+  return readAltSecenekler(
+    pick(row, 'altSecenekler', 'AltSecenekler', 'secenekler', 'Secenekler'),
+  )
+}
+
 function mergeSoruMetadata(
   soru: AnketYanitSoruDto,
   metadata: Record<string, unknown> | undefined,
@@ -94,13 +101,23 @@ function mergeSoruMetadata(
     altSoruMetni: pick(metadata, 'altSoruMetni', 'AltSoruMetni') ?? soru.altSoruMetni,
     zorunlu: Boolean(pick(metadata, 'zorunlu', 'Zorunlu') ?? soru.zorunlu),
     bagliSoru: Boolean(pick(metadata, 'bagliSoru', 'BagliSoru') ?? soru.bagliSoru),
+    bagliOlduguSoruId:
+      readOptionalPositiveId(pick(metadata, 'bagliOlduguSoruId', 'BagliOlduguSoruId')) ??
+      soru.bagliOlduguSoruId,
+    bagliAltSecenekId:
+      readOptionalPositiveId(pick(metadata, 'bagliAltSecenekId', 'BagliAltSecenekId')) ??
+      soru.bagliAltSecenekId,
+    bagliKosulTipi:
+      normalizeBagliKosulTipi(
+        pick(metadata, 'bagliKosulTipi', 'BagliKosulTipi') ?? soru.bagliKosulTipi,
+      ),
     cevapGirdiTipAdi: pick(metadata, 'cevapGirdiTipAdi', 'CevapGirdiTipAdi') ?? soru.cevapGirdiTipAdi,
     cevapGirdiTipId:
       readNumber(pick(metadata, 'cevapGirdiTipId', 'CevapGirdiTipId')) ?? soru.cevapGirdiTipId,
     secenekGrupId:
       readOptionalPositiveId(pick(metadata, 'secenekGrupId', 'SecenekGrupId')) ?? soru.secenekGrupId,
     altSecenekler: (() => {
-      const parsed = readAltSecenekler(pick(metadata, 'altSecenekler', 'AltSecenekler'))
+      const parsed = readAltSeceneklerFromFields(metadata)
       return parsed.length > 0 ? parsed : soru.altSecenekler
     })(),
   }
@@ -185,10 +202,19 @@ export function mapAnketYanitSoruFromApi(
     ),
     zorunlu: Boolean(pick(row, 'zorunlu', 'Zorunlu')),
     bagliSoru: Boolean(pick(row, 'bagliSoru', 'BagliSoru')),
+    bagliOlduguSoruId: readOptionalPositiveId(
+      pick(row, 'bagliOlduguSoruId', 'BagliOlduguSoruId'),
+    ),
+    bagliAltSecenekId: readOptionalPositiveId(
+      pick(row, 'bagliAltSecenekId', 'BagliAltSecenekId'),
+    ),
+    bagliKosulTipi: normalizeBagliKosulTipi(
+      pick(row, 'bagliKosulTipi', 'BagliKosulTipi'),
+    ),
     cevapGirdiTipAdi: pick(row, 'cevapGirdiTipAdi', 'CevapGirdiTipAdi') ?? null,
     cevapGirdiTipId: readNumber(pick(row, 'cevapGirdiTipId', 'CevapGirdiTipId')),
     secenekGrupId: readOptionalPositiveId(pick(row, 'secenekGrupId', 'SecenekGrupId')),
-    altSecenekler: readAltSecenekler(pick(row, 'altSecenekler', 'AltSecenekler')),
+    altSecenekler: readAltSeceneklerFromFields(row),
     yanitlandi,
     cevapText:
       cevapFields.cevapText ??
@@ -219,10 +245,19 @@ function mapYanitlanmayanSoruFromApi(raw: unknown): AnketYanitSoruDto | null {
     gorunur: true,
     zorunlu: Boolean(pick(row, 'zorunlu', 'Zorunlu')),
     bagliSoru: Boolean(pick(row, 'bagliSoru', 'BagliSoru')),
+    bagliOlduguSoruId: readOptionalPositiveId(
+      pick(row, 'bagliOlduguSoruId', 'BagliOlduguSoruId'),
+    ),
+    bagliAltSecenekId: readOptionalPositiveId(
+      pick(row, 'bagliAltSecenekId', 'BagliAltSecenekId'),
+    ),
+    bagliKosulTipi: normalizeBagliKosulTipi(
+      pick(row, 'bagliKosulTipi', 'BagliKosulTipi'),
+    ),
     cevapGirdiTipAdi: pick(row, 'cevapGirdiTipAdi', 'CevapGirdiTipAdi') ?? null,
     cevapGirdiTipId: readNumber(pick(row, 'cevapGirdiTipId', 'CevapGirdiTipId')),
     secenekGrupId: readOptionalPositiveId(pick(row, 'secenekGrupId', 'SecenekGrupId')),
-    altSecenekler: readAltSecenekler(pick(row, 'altSecenekler', 'AltSecenekler')),
+    altSecenekler: readAltSeceneklerFromFields(row),
     yanitlandi: false,
     cevapText: null,
     cevapAltSecenekId: null,

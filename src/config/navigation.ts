@@ -10,6 +10,7 @@ import {
   Shield,
   Users,
   Ruler,
+  UserRound,
 } from 'lucide-react'
 
 export interface NavItem {
@@ -79,6 +80,7 @@ export const sidebarSections: NavSection[] = [
           { to: '/tanimlamalar/soru-tanimlamalari', label: 'Tanımlı Sorular', icon: FileQuestion },
           { to: '/tanimlamalar/anket-tanimlamalari', label: 'Anket Tanımlama', icon: ClipboardList },
           { to: '/tanimlamalar/birim-tanimlamalari', label: 'Birim Tanımlama', icon: Ruler },
+          { to: '/tanimlamalar/ekici-tanimlamalari', label: 'Ekici Tanımlama', icon: UserRound },
         ],
       },
     ],
@@ -103,6 +105,7 @@ export const pageTitles: Record<string, string> = {
   '/tanimlamalar/soru-tanimlamalari': 'Tanımlı Sorular',
   '/tanimlamalar/anket-tanimlamalari': 'Anket Tanımlama',
   '/tanimlamalar/birim-tanimlamalari': 'Birim Tanımlama',
+  '/tanimlamalar/ekici-tanimlamalari': 'Ekici Tanımlama',
   '/yetkilendirme': 'Yetkilendirme',
   '/users': 'Kullanıcılar',
   '/settings': 'Ayarlar',

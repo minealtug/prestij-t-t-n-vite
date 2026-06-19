@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query/query-keys'
 import { anketYanitApi } from '../api/anket-yanit-api'
 import type { AnketYanitCevapRequest, AnketYanitOturumParams } from '../types/anket-yanit.types'
+import { buildAnketYanitCevapBatchRequest } from '../utils/build-anket-yanit-cevap-batch'
 
 export function useAnketSablonlar(baslikId: number | null) {
   return useQuery({
@@ -45,9 +46,8 @@ export function useSubmitAnketYanitCevapBatch() {
 
   return useMutation({
     mutationFn: async (payloads: AnketYanitCevapRequest[]) => {
-      for (const payload of payloads) {
-        await anketYanitApi.submitCevap(payload)
-      }
+      const batchRequest = buildAnketYanitCevapBatchRequest(payloads)
+      return anketYanitApi.submitCevapBatch(batchRequest)
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({

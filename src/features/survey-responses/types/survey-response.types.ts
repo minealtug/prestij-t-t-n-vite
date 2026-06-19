@@ -30,6 +30,9 @@ export interface CografiFiltreOptionsDto {
 export interface AnketCevapDegerDto {
   cevapAltSecenekAdi: string | null
   cevapText: string | null
+  cevapGosterimMetni?: string | null
+  cevapDatetime?: string | null
+  cevapNumeric?: number | null
 }
 
 export interface AnketSoruCevapDto {

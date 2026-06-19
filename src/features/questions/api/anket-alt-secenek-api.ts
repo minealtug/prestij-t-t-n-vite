@@ -7,4 +7,11 @@ export const anketAltSecenekApi = {
     const raw = await apiClient.get<unknown[]>('/api/AnketAltSecenek')
     return mapAltSeceneklerFromApi(raw)
   },
+
+  getBySecenekGrupId: async (secenekGrupId: number): Promise<AltSecenekDto[]> => {
+    const raw = await apiClient.get<unknown[]>('/api/AnketAltSecenek/by-secenek-grup', {
+      secenekGrupId,
+    })
+    return mapAltSeceneklerFromApi(raw)
+  },
 }

@@ -28,7 +28,7 @@ export function mapEkiciFromApi(raw: unknown): EkiciDto | null {
 
   return {
     id,
-    adi: String(pick(row, 'adi', 'Adi') ?? '').trim(),
+    adi: String(pick(row, 'adi', 'Adi', 'ad', 'Ad') ?? '').trim(),
     soyad: String(pick(row, 'soyad', 'Soyad') ?? '').trim(),
     mintikaId: readNumber(pick(row, 'mintikaId', 'MintikaId')),
   }

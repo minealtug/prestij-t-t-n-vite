@@ -1,5 +1,6 @@
 import type { AnketYanitOturumDto } from '@/features/survey-fill/types/anket-yanit.types'
 import type { AnketCevapDetayDto } from '../types/survey-response.types'
+import { formatCevapDisplay } from './map-anket-cevap'
 
 export function mapOturumToCevapDetay(oturum: AnketYanitOturumDto): AnketCevapDetayDto {
   const sorular = oturum.sorular
@@ -11,6 +12,21 @@ export function mapOturumToCevapDetay(oturum: AnketYanitOturumDto): AnketCevapDe
             null
           : null
 
+      const cevapPayload =
+        soru.yanitlandi && (soru.cevapText || cevapAltSecenekAdi)
+          ? {
+              cevapText: soru.cevapText,
+              cevapAltSecenekAdi,
+            }
+          : null
+
+      const cevap = cevapPayload
+        ? {
+            ...cevapPayload,
+            cevapGosterimMetni: formatCevapDisplay(cevapPayload),
+          }
+        : null
+
       return {
         sira: soru.sira,
         soruId: soru.soruId,
@@ -18,13 +34,7 @@ export function mapOturumToCevapDetay(oturum: AnketYanitOturumDto): AnketCevapDe
         altSoruMetni: soru.altSoruMetni,
         bagliSoru: soru.bagliSoru,
         yanitlandi: soru.yanitlandi,
-        cevap:
-          soru.yanitlandi && (soru.cevapText || cevapAltSecenekAdi)
-            ? {
-                cevapText: soru.cevapText,
-                cevapAltSecenekAdi,
-              }
-            : null,
+        cevap,
       }
     })
 

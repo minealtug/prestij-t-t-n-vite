@@ -11,6 +11,24 @@ export function resolveQuestionInputKind(
 ): QuestionInputKind {
   if (isEkiciProducerQuestion(question)) return 'ekici'
 
+  if (hasSecenekGrupDropdown(question)) {
+    return 'select'
+  }
+
+  return resolveBaseAnswerInputKind(question, answerTypeLookup)
+}
+
+export function hasSecenekGrupDropdown(question: SurveyFillSoruView): boolean {
+  if (isEkiciProducerQuestion(question)) return false
+  return question.secenekGrupId != null && question.secenekGrupId > 0
+}
+
+export function resolveBaseAnswerInputKind(
+  question: SurveyFillSoruView,
+  answerTypeLookup?: AnswerTypeKindLookup,
+): QuestionInputKind {
+  if (isEkiciProducerQuestion(question)) return 'ekici'
+
   const tipId = question.cevapGirdiTipId
   if (tipId != null && answerTypeLookup?.has(tipId)) {
     return answerTypeLookup.get(tipId)!
@@ -21,4 +39,16 @@ export function resolveQuestionInputKind(
   }
 
   return 'text'
+}
+
+export function resolveEffectiveQuestionInputKind(
+  question: SurveyFillSoruView,
+  answerTypeLookup: AnswerTypeKindLookup | undefined,
+  useManualEntry: boolean,
+): QuestionInputKind {
+  if (useManualEntry && hasSecenekGrupDropdown(question)) {
+    return resolveBaseAnswerInputKind(question, answerTypeLookup)
+  }
+
+  return resolveQuestionInputKind(question, answerTypeLookup)
 }

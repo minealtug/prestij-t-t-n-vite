@@ -1,3 +1,5 @@
+import { Plus } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils/cn'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
@@ -8,7 +10,11 @@ import type { AnswerTypeKindLookup } from '../utils/build-answer-type-kind-looku
 import { getFriendlyAnswerTypeLabel } from '@/features/questions/utils/answer-type-label'
 import { getQuestionKey } from '../utils/question-key'
 import { getSurveyFillQuestionLabel } from '../utils/is-ekici-producer-question'
-import { resolveQuestionInputKind } from '../utils/resolve-question-input-kind'
+import {
+  hasSecenekGrupDropdown,
+  resolveEffectiveQuestionInputKind,
+  type QuestionInputKind,
+} from '../utils/resolve-question-input-kind'
 
 interface SurveyFillQuestionFieldProps {
   question: SurveyFillSoruView
@@ -22,6 +28,100 @@ interface SurveyFillQuestionFieldProps {
   selectLoading?: boolean
   answerTypeLookup?: AnswerTypeKindLookup
   disabled?: boolean
+  useManualEntry?: boolean
+  onEnableManualEntry?: () => void
+  onDisableManualEntry?: () => void
+}
+
+function renderAnswerControl(
+  kind: QuestionInputKind,
+  props: {
+    fieldId: string
+    value: string
+    error?: string
+    disabled: boolean
+    onChange: (value: string) => void
+    ekiciOptions: SearchableSelectOption[]
+    ekiciLoading: boolean
+    label?: string
+  },
+) {
+  const { fieldId, value, error, disabled, onChange, ekiciOptions, ekiciLoading, label } = props
+
+  if (kind === 'ekici') {
+    return (
+      <SearchableSelect
+        label={label}
+        value={value}
+        onChange={onChange}
+        options={ekiciOptions}
+        disabled={disabled || ekiciLoading}
+        error={error}
+        placeholder={ekiciLoading ? 'Ekiciler yükleniyor...' : 'Ad veya soyad ile ekici ara...'}
+        emptyMessage="Eşleşen ekici bulunamadı"
+      />
+    )
+  }
+
+  if (kind === 'textarea') {
+    return (
+      <Textarea
+        id={fieldId}
+        label={label}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Cevabınızı yazın"
+        error={error}
+        rows={4}
+        disabled={disabled}
+      />
+    )
+  }
+
+  if (kind === 'checkbox') {
+    return (
+      <>
+        {label ? <p className="mb-1.5 text-sm font-medium text-foreground">{label}</p> : null}
+        <label
+          className={cn(
+            'flex items-start gap-3 rounded-lg border border-border/70 bg-surface px-3 py-3',
+            disabled ? 'cursor-not-allowed' : 'cursor-pointer',
+          )}
+        >
+          <input
+            id={fieldId}
+            type="checkbox"
+            checked={value === 'true'}
+            disabled={disabled}
+            onChange={(e) => onChange(e.target.checked ? 'true' : 'false')}
+            className="mt-0.5 h-4 w-4 rounded border-border text-primary-500 focus:ring-primary-500"
+          />
+          <span className="text-sm text-foreground">Evet</span>
+        </label>
+      </>
+    )
+  }
+
+  return (
+    <Input
+      id={fieldId}
+      label={label}
+      type={
+        kind === 'number'
+          ? 'number'
+          : kind === 'date'
+            ? 'date'
+            : kind === 'datetime'
+              ? 'datetime-local'
+              : 'text'
+      }
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder="Cevabınızı girin"
+      error={error}
+      disabled={disabled}
+    />
+  )
 }
 
 export function SurveyFillQuestionField({
@@ -35,9 +135,13 @@ export function SurveyFillQuestionField({
   selectLoading = false,
   answerTypeLookup,
   disabled = false,
+  useManualEntry = false,
+  onEnableManualEntry,
+  onDisableManualEntry,
 }: SurveyFillQuestionFieldProps) {
   const fieldId = `survey-fill-${getQuestionKey(question)}`
-  const kind = resolveQuestionInputKind(question, answerTypeLookup)
+  const showSecenekDropdown = hasSecenekGrupDropdown(question) && !useManualEntry
+  const kind = resolveEffectiveQuestionInputKind(question, answerTypeLookup, useManualEntry)
   const questionLabel = getSurveyFillQuestionLabel(question)
   const answerHint = question.cevapGirdiTipAdi
     ? getFriendlyAnswerTypeLabel(question.cevapGirdiTipAdi)
@@ -88,71 +192,71 @@ export function SurveyFillQuestionField({
       </div>
 
       <div className="mt-4">
-        {kind === 'ekici' ? (
-          <SearchableSelect
-            value={value}
-            onChange={onChange}
-            options={ekiciOptions}
-            disabled={disabled || ekiciLoading}
-            error={error}
-            placeholder={ekiciLoading ? 'Ekiciler yükleniyor...' : 'Ad veya soyad ile ekici ara...'}
-            emptyMessage="Eşleşen ekici bulunamadı"
-          />
-        ) : kind === 'select' ? (
-          <Select
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            options={[
-              {
-                value: '',
-                label: selectLoading
-                  ? 'Seçenekler yükleniyor...'
-                  : selectOptions.length > 0
-                    ? 'Seçenek seçin'
-                    : 'Seçenek bulunamadı',
-              },
-              ...selectOptions,
-            ]}
-            disabled={disabled || selectLoading || selectOptions.length === 0}
-            error={error}
-          />
-        ) : kind === 'textarea' ? (
-          <Textarea
-            id={fieldId}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="Cevabınızı yazın"
-            error={error}
-            rows={4}
-            disabled={disabled}
-          />
-        ) : kind === 'checkbox' ? (
-          <label
-            className={cn(
-              'flex items-start gap-3 rounded-lg border border-border/70 bg-surface px-3 py-3',
-              disabled ? 'cursor-not-allowed' : 'cursor-pointer',
-            )}
-          >
-            <input
-              id={fieldId}
-              type="checkbox"
-              checked={value === 'true'}
-              disabled={disabled}
-              onChange={(e) => onChange(e.target.checked ? 'true' : 'false')}
-              className="mt-0.5 h-4 w-4 rounded border-border text-primary-500 focus:ring-primary-500"
-            />
-            <span className="text-sm text-foreground">Evet</span>
-          </label>
+        {showSecenekDropdown ? (
+          <div className="space-y-2">
+            <div className="flex items-end gap-2">
+              <div className="min-w-0 flex-1">
+                <Select
+                  label="Cevap"
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                  options={[
+                    {
+                      value: '',
+                      label: selectLoading
+                        ? 'Seçenekler yükleniyor...'
+                        : selectOptions.length > 0
+                          ? 'Seçenek seçin'
+                          : 'Seçenek bulunamadı',
+                    },
+                    ...selectOptions,
+                  ]}
+                  disabled={disabled || selectLoading || selectOptions.length === 0}
+                  error={error}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                className="h-10 w-10 shrink-0 px-0"
+                onClick={onEnableManualEntry}
+                disabled={disabled}
+                title="Listede yoksa manuel giriş yap"
+                aria-label="Manuel cevap gir"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted">
+              Listede cevabınız yoksa + ile manuel giriş yapabilirsiniz.
+            </p>
+          </div>
         ) : (
-          <Input
-            id={fieldId}
-            type={kind === 'number' ? 'number' : kind === 'date' ? 'date' : kind === 'datetime' ? 'datetime-local' : 'text'}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="Cevabınızı girin"
-            error={error}
-            disabled={disabled}
-          />
+          <>
+            {useManualEntry && onDisableManualEntry ? (
+              <div className="mb-2 flex justify-end">
+                <button
+                  type="button"
+                  className="text-xs font-medium text-primary-600 hover:text-primary-700"
+                  onClick={onDisableManualEntry}
+                  disabled={disabled}
+                >
+                  Listeden seç
+                </button>
+              </div>
+            ) : null}
+            {renderAnswerControl(kind, {
+              fieldId,
+              value,
+              error,
+              disabled,
+              onChange,
+              ekiciOptions,
+              ekiciLoading,
+              label: kind === 'ekici' ? undefined : 'Cevap',
+            })}
+          </>
         )}
 
         {kind === 'checkbox' && error && (
@@ -161,9 +265,12 @@ export function SurveyFillQuestionField({
           </p>
         )}
 
-        {answerHint && kind !== 'checkbox' && kind !== 'ekici' && kind !== 'select' && (
-          <p className="mt-1.5 text-xs text-muted">{answerHint}</p>
-        )}
+        {answerHint &&
+          kind !== 'checkbox' &&
+          kind !== 'ekici' &&
+          !showSecenekDropdown && (
+            <p className="mt-1.5 text-xs text-muted">{answerHint}</p>
+          )}
       </div>
     </article>
   )

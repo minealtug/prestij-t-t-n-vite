@@ -8,6 +8,7 @@ import type {
   LinkedQuestionMigrateResultDto,
   QuestionConnectionDto,
   QuestionDto,
+  UpdateBagliKosulRequest,
 } from '../types/question.types'
 
 export const questionsApi = {
@@ -36,6 +37,9 @@ export const questionsApi = {
 
   setActive: (id: string | number, aktif: boolean) =>
     apiClient.patch<QuestionDto>(`/api/AnketSoru/${id}/aktif?aktif=${aktif}`),
+
+  updateBagliKosul: (id: string | number, payload: UpdateBagliKosulRequest) =>
+    apiClient.patch<{ id: number; message: string }>(`/api/AnketSoru/${id}/bagli-kosul`, payload),
 
   delete: (id: string | number) => apiClient.delete<void>(`/api/AnketSoru/${id}`),
 }

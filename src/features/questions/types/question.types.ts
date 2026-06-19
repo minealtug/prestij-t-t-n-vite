@@ -19,6 +19,8 @@ export interface QuestionDto {
   secenekGrupId: number | null
   bagliSoru: boolean
   bagliOlduguSoruId?: number | null
+  bagliAltSecenekId?: number | null
+  bagliKosulTipi?: string | null
   bagliOlduguSoru?: string | { soruMetni?: string | null; [key: string]: unknown } | null
   kaynak?: 'AppDb' | 'LegacyDb' | string
 }
@@ -39,6 +41,7 @@ export interface CreateLinkedQuestionPayload {
   secenekGrupId?: number
   anketCevapBirimId?: number
   bagliAltSecenekId?: number
+  bagliKosulTipi?: string
   bagliSorular?: CreateLinkedQuestionPayload[]
 }
 
@@ -65,11 +68,14 @@ export interface CreateNewLinkedQuestionRequest {
   secenekGrupId?: number
   anketCevapBirimId?: number
   bagliAltSecenekId?: number
+  bagliKosulTipi?: string
+  bagliSorular?: CreateLinkedQuestionPayload[]
 }
 
 export interface LinkExistingQuestionRequest {
   bagliSoruId: number
   bagliAltSecenekId?: number | null
+  bagliKosulTipi?: string | null
 }
 
 export interface QuestionConnectionDto {
@@ -77,11 +83,13 @@ export interface QuestionConnectionDto {
   soruId: number
   bagliSoruId: number
   bagliAltSecenekId?: number | null
+  bagliKosulTipi?: string | null
 }
 
 export interface CreateLinkedQuestionWithMigrateRequest extends CreateNewLinkedQuestionRequest {
   parentLegacyQuestionId: number
   bagliLegacyAltSecenekId?: number
+  bagliKosulTipi?: string
 }
 
 export interface LinkedQuestionMigrateResultDto {
@@ -89,4 +97,9 @@ export interface LinkedQuestionMigrateResultDto {
   parentLegacyQuestionId: number
   parentNewQuestionId: number
   newLinkedQuestionId: number
+}
+
+export interface UpdateBagliKosulRequest {
+  bagliKosulTipi?: string
+  bagliAltSecenekId?: number | null
 }

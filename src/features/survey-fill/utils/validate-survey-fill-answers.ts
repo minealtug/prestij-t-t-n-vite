@@ -1,16 +1,17 @@
 import type { SurveyFillSoruView } from '../types/anket-yanit.types'
 import type { AnswerTypeKindLookup } from './build-answer-type-kind-lookup'
-import { resolveQuestionInputKind } from './resolve-question-input-kind'
+import { resolveEffectiveQuestionInputKind } from './resolve-question-input-kind'
 import { getQuestionKey } from './question-key'
 
 export function validateSurveyFillAnswer(
   question: SurveyFillSoruView,
   value: string,
   answerTypeLookup?: AnswerTypeKindLookup,
+  useManualEntry = false,
 ): string | undefined {
   if (!question.zorunlu) return undefined
 
-  const kind = resolveQuestionInputKind(question, answerTypeLookup)
+  const kind = resolveEffectiveQuestionInputKind(question, answerTypeLookup, useManualEntry)
 
   if (kind === 'checkbox') {
     return value === 'true' ? undefined : 'Bu soru zorunludur.'
@@ -37,12 +38,18 @@ export function validateSurveyFillAnswers(
   questions: SurveyFillSoruView[],
   answers: Record<string, string>,
   answerTypeLookup?: AnswerTypeKindLookup,
+  manualEntryByKey: Record<string, boolean> = {},
 ): Record<string, string> {
   const errors: Record<string, string> = {}
 
   for (const question of questions) {
     const key = getQuestionKey(question)
-    const error = validateSurveyFillAnswer(question, answers[key] ?? '', answerTypeLookup)
+    const error = validateSurveyFillAnswer(
+      question,
+      answers[key] ?? '',
+      answerTypeLookup,
+      manualEntryByKey[key] ?? false,
+    )
     if (error) errors[key] = error
   }
 

@@ -3,6 +3,8 @@ import { isAppError, normalizeApiError } from '@/lib/api/api-error'
 import type {
   AltSecenekOptionDto,
   AnketSablonDto,
+  AnketYanitCevapBatchRequest,
+  AnketYanitCevapBatchResponse,
   AnketYanitCevapRequest,
   AnketYanitOturumDto,
   AnketYanitOturumParams,
@@ -13,9 +15,12 @@ import {
   mapAnketYanitOturumFromApi,
 } from '../utils/normalize-anket-yanit-api'
 
-async function tryFetchAltSecenekler(path: string): Promise<AltSecenekOptionDto[] | null> {
+async function tryFetchAltSecenekler(
+  path: string,
+  params?: Record<string, unknown>,
+): Promise<AltSecenekOptionDto[] | null> {
   try {
-    const raw = await apiClient.get<unknown[]>(path)
+    const raw = await apiClient.get<unknown[]>(path, params)
     return mapAltSeceneklerFromApi(raw)
   } catch {
     return null
@@ -86,15 +91,28 @@ export const anketYanitApi = {
   submitCevap: (payload: AnketYanitCevapRequest) =>
     apiClient.post<unknown>('/api/AnketYanit/cevap', payload),
 
+  submitCevapBatch: (payload: AnketYanitCevapBatchRequest) =>
+    apiClient.post<AnketYanitCevapBatchResponse>('/api/AnketYanit/cevap/batch', payload),
+
   getAltSecenekler: async (secenekGrupId: number): Promise<AltSecenekOptionDto[]> => {
-    const candidates = [
+    const queryCandidates = [
+      ['/api/AnketAltSecenek/by-secenek-grup', { secenekGrupId }],
+      ['/api/AnketSoru/alt-secenekler', { secenekGrupId }],
+    ] as const
+
+    for (const [path, params] of queryCandidates) {
+      const options = await tryFetchAltSecenekler(path, params)
+      if (options) return options
+    }
+
+    const pathCandidates = [
       `/api/AnketYanit/secenek-grup/${secenekGrupId}/alt-secenekler`,
       `/api/AnketSecenekGrup/${secenekGrupId}/altSecenekler`,
     ]
 
-    for (const path of candidates) {
+    for (const path of pathCandidates) {
       const options = await tryFetchAltSecenekler(path)
-      if (options && options.length > 0) return options
+      if (options) return options
     }
 
     return []
