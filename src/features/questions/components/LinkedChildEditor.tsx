@@ -245,20 +245,20 @@ export function LinkedChildEditor({
                 disabled={secenekGruplariLoading}
                 required={showSecenekGrup}
               />
-
-              <Select
-                label="Birim"
-                value={child.anketCevapBirimId}
-                onChange={(e) =>
-                  updateChildField(child.key, (item) => ({
-                    ...item,
-                    anketCevapBirimId: e.target.value,
-                  }))
-                }
-                options={birimOptions}
-                disabled={answerUnitsLoading}
-              />
             </div>
+
+            <Select
+              label="Birim"
+              value={child.anketCevapBirimId}
+              onChange={(e) =>
+                updateChildField(child.key, (item) => ({
+                  ...item,
+                  anketCevapBirimId: e.target.value,
+                }))
+              }
+              options={birimOptions}
+              disabled={answerUnitsLoading}
+            />
 
             <div className="flex flex-wrap gap-6">
               <label className="flex cursor-pointer items-center gap-3">

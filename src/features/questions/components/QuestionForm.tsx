@@ -81,12 +81,14 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
   const questionsBySurveyQuery = useQuestions(selectedBaslikId > 0 ? selectedBaslikId : undefined)
 
   const surveyOptions = useMemo(
-    () =>
-      (surveysQuery.data ?? []).map((survey) => ({
+    () => [
+      { key: 'placeholder', value: '', label: 'Anket seçin' },
+      ...(surveysQuery.data ?? []).map((survey) => ({
         key: `${survey.kaynak ?? 'unknown'}-${survey.id}`,
         value: String(survey.id),
         label: survey.name,
       })),
+    ],
     [surveysQuery.data],
   )
 
@@ -470,14 +472,15 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
           disabled={secenekGruplariQuery.isLoading}
           required={showSecenekGrup}
         />
-        <Select
-          label="Birim"
-          value={form.anketCevapBirimId}
-          onChange={(e) => setForm((f) => ({ ...f, anketCevapBirimId: e.target.value }))}
-          options={birimOptions}
-          disabled={answerUnitsQuery.isLoading}
-        />
       </div>
+
+      <Select
+        label="Birim"
+        value={form.anketCevapBirimId}
+        onChange={(e) => setForm((f) => ({ ...f, anketCevapBirimId: e.target.value }))}
+        options={birimOptions}
+        disabled={answerUnitsQuery.isLoading}
+      />
 
       <div className="flex flex-wrap gap-6">
         <label className="flex cursor-pointer items-center gap-3">
@@ -538,21 +541,19 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
       </div>
 
       <form className="space-y-5" onSubmit={submit}>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Select
-            label="Anket Başlığı"
-            value={form.baslikId}
-            onChange={(e) => {
-              setForm((f) => ({ ...f, baslikId: e.target.value }))
-              setParentQuestionId('')
-              setExistingLinkedQuestionId('')
-              setLinkedMigrateResult(null)
-              setLinkedConnectionResult(null)
-            }}
-            options={surveyOptions}
-            required
-          />
-        </div>
+        <Select
+          label="Anket Başlığı"
+          value={form.baslikId}
+          onChange={(e) => {
+            setForm((f) => ({ ...f, baslikId: e.target.value }))
+            setParentQuestionId('')
+            setExistingLinkedQuestionId('')
+            setLinkedMigrateResult(null)
+            setLinkedConnectionResult(null)
+          }}
+          options={surveyOptions}
+          required
+        />
 
         {showMainQuestionFields && renderQuestionFields('main-')}
 

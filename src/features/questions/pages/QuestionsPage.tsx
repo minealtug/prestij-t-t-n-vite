@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { ClipboardList, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
@@ -15,7 +14,7 @@ import {
   useUpdateBagliKosul,
   useUpdateQuestion,
 } from '../hooks/use-questions'
-import { useCreateSurvey, useSurveys } from '@/features/surveys/hooks/use-surveys'
+import { useSurveys } from '@/features/surveys/hooks/use-surveys'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { useRequirePagePermission } from '@/features/permissions/hooks/use-require-page-permission'
 import {
@@ -31,14 +30,10 @@ export function QuestionsPage() {
   const { canRead, canEdit, loading: permissionLoading } = useRequirePagePermission()
   const isDefinitionsPage = location.pathname.startsWith('/tanimlamalar')
   const surveysQuery = useSurveys()
-  const createSurvey = useCreateSurvey()
   const updateQuestion = useUpdateQuestion()
   const updateBagliKosul = useUpdateBagliKosul()
   const setQuestionActive = useSetQuestionActive()
   const deleteQuestion = useDeleteQuestion()
-  const [surveyModalOpen, setSurveyModalOpen] = useState(false)
-  const [surveyName, setSurveyName] = useState('')
-  const [surveyCategory, setSurveyCategory] = useState('Genel')
   const [selectedSurveyId, setSelectedSurveyId] = useState(0)
   const [editingQuestion, setEditingQuestion] = useState<QuestionDto | null>(null)
   const [editText, setEditText] = useState('')
@@ -51,20 +46,6 @@ export function QuestionsPage() {
     const firstSurveyId = Number(surveysQuery.data?.[0]?.id)
     if (firstSurveyId > 0) setSelectedSurveyId(firstSurveyId)
   }, [isDefinitionsPage, selectedSurveyId, surveysQuery.data])
-
-  const handleCreateSurvey = () => {
-    if (!canEdit) return
-    createSurvey.mutate(
-      { name: surveyName, category: surveyCategory },
-      {
-        onSuccess: () => {
-          setSurveyModalOpen(false)
-          setSurveyName('')
-          setSurveyCategory('Genel')
-        },
-      },
-    )
-  }
 
   const openEditModal = (question: QuestionDto) => {
     if (!canEdit) return
@@ -176,23 +157,6 @@ export function QuestionsPage() {
 
   return (
     <PageContainer>
-      {!isDefinitionsPage && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          
-          <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setSurveyModalOpen(true)}
-              disabled={!canEdit}
-              className="border-[var(--brand-teal)] bg-[var(--brand-teal)] text-white hover:border-[var(--brand-teal-dark)] hover:bg-[var(--brand-teal-dark)] focus-visible:ring-[var(--brand-teal)]"
-            >
-              <ClipboardList className="h-4 w-4" />
-              Yeni Anket Ekle
-            </Button>
-          </div>
-        </div>
-      )}
-
       {!isDefinitionsPage && <QuestionForm readOnly={!canEdit} />}
 
       {isDefinitionsPage && (
@@ -219,46 +183,6 @@ export function QuestionsPage() {
           isUpdating={isMutating}
           isDeleting={deleteQuestion.isPending}
         />
-      )}
-
-      {!isDefinitionsPage && (
-        <Modal
-          open={surveyModalOpen}
-          onClose={() => setSurveyModalOpen(false)}
-          title="Yeni Anket Ekle"
-         
-          footer={
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setSurveyModalOpen(false)}>
-                İptal
-              </Button>
-              <Button
-                onClick={handleCreateSurvey}
-                loading={createSurvey.isPending}
-                disabled={!surveyName.trim()}
-              >
-                <Plus className="h-4 w-4" />
-                Kaydet
-              </Button>
-            </div>
-          }
-        >
-          <div className="space-y-4">
-            <Input
-              label="Anket İsmi"
-              value={surveyName}
-              onChange={(e) => setSurveyName(e.target.value)}
-              placeholder="Anket adı"
-              required
-            />
-          
-            {createSurvey.isError && (
-              <p className="text-sm text-red-600" role="alert">
-                {getErrorMessage(createSurvey.error)}
-              </p>
-            )}
-          </div>
-        </Modal>
       )}
 
       <Modal
