@@ -1,4 +1,4 @@
-import { Pencil, Ban, Trash2 } from 'lucide-react'
+import { Pencil, Ban } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Table, type TableColumn } from '@/components/ui/Table'
 import { ErrorState } from '@/components/feedback/ErrorState'
@@ -40,9 +40,7 @@ interface QuestionsTableProps {
   onRefresh: () => void
   onEdit?: (question: QuestionDto) => void
   onSetPassive?: (question: QuestionDto) => void
-  onDelete?: (question: QuestionDto) => void
   isUpdating: boolean
-  isDeleting: boolean
 }
 
 export function QuestionsTable({
@@ -53,9 +51,7 @@ export function QuestionsTable({
   onRefresh,
   onEdit,
   onSetPassive,
-  onDelete,
   isUpdating,
-  isDeleting,
 }: QuestionsTableProps) {
   const columns: TableColumn<QuestionDto>[] = [
     {
@@ -77,7 +73,7 @@ export function QuestionsTable({
     {
       key: 'soruMetni',
       header: 'SORU METNİ',
-      className: 'w-[60%] min-w-[360px] whitespace-normal',
+      className: 'min-w-[16rem] whitespace-normal sm:min-w-[20rem] lg:min-w-[24rem]',
       render: (row) => (
         <span className="whitespace-normal break-words">{row.soruMetni}</span>
       ),
@@ -85,7 +81,7 @@ export function QuestionsTable({
     {
       key: 'cevapGirdiTipAdi',
       header: 'CEVAP TİPİ',
-      className: 'w-56 min-w-[13rem] whitespace-normal',
+      className: 'w-20 max-w-[5rem] whitespace-nowrap',
       render: (row) => {
         if (!row.cevapGirdiTipAdi) return row.cevapGirdiTipId != null ? row.cevapGirdiTipId : '-'
         const friendly = getFriendlyAnswerTypeLabel(row.cevapGirdiTipAdi)
@@ -93,7 +89,7 @@ export function QuestionsTable({
           friendly === row.cevapGirdiTipAdi ? friendly : `${friendly} (${row.cevapGirdiTipAdi})`
 
         return (
-          <span className="whitespace-normal break-words" title={label}>
+          <span className="block truncate" title={label}>
             {label}
           </span>
         )
@@ -139,7 +135,7 @@ export function QuestionsTable({
         return getBagliKosulTipiLabel(row.bagliKosulTipi)
       },
     },
-    ...(onEdit || onSetPassive || onDelete
+    ...(onEdit || onSetPassive
       ? [
           {
             key: 'actions',
@@ -172,19 +168,6 @@ export function QuestionsTable({
                     <Ban className="h-3.5 w-3.5 text-amber-600" />
                   </Button>
                 )}
-                {onDelete && row.kaynak === 'AppDb' && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="!h-7 !w-7 !p-0"
-                    aria-label="Sil"
-                    disabled={isDeleting}
-                    onClick={() => onDelete(row)}
-                    title="Soruyu sil"
-                  >
-                    <Trash2 className="h-3.5 w-3.5 text-red-600" />
-                  </Button>
-                )}
               </div>
             ),
           } satisfies TableColumn<QuestionDto>,
@@ -210,7 +193,8 @@ export function QuestionsTable({
           keyExtractor={(row) => `${row.kaynak ?? 'unknown'}-${row.id}`}
           isLoading={isLoading}
           emptyMessage="Henüz soru yok."
-          horizontalScroll={false}
+          horizontalScroll
+          tableClassName="min-w-[68rem]"
           variant="plain"
           compact
           className="!rounded-none !border-0"

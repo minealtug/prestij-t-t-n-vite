@@ -26,6 +26,8 @@ export interface TableProps<T> {
   variant?: 'card' | 'plain'
   /** Daha sıkı satır yüksekliği */
   compact?: boolean
+  /** Tablo öğesine ek sınıflar (ör. min genişlik) */
+  tableClassName?: string
   pagination?: {
     pageSize: number
     pageSizeOptions?: number[]
@@ -44,6 +46,7 @@ export function Table<T>({
   horizontalScroll = true,
   variant = 'card',
   compact = false,
+  tableClassName,
   pagination,
 }: TableProps<T>) {
   const [currentPage, setCurrentPage] = useState(1)
@@ -93,12 +96,18 @@ export function Table<T>({
 
   return (
     <div className={shellClassName}>
-      <div className={cn('w-full', horizontalScroll ? 'overflow-x-auto' : 'overflow-x-hidden')}>
+      <div
+        className={cn(
+          'w-full',
+          horizontalScroll ? 'overflow-x-auto scrollbar-hidden' : 'overflow-x-hidden',
+        )}
+      >
         <table
           className={cn(
             'app-table',
             compact && 'app-table-compact',
             horizontalScroll ? 'min-w-[640px]' : 'min-w-0 table-fixed',
+            tableClassName,
           )}
         >
           <thead>

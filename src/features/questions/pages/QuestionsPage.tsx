@@ -8,7 +8,6 @@ import { getErrorMessage } from '@/lib/api/api-error'
 import { QuestionForm } from '../components/QuestionForm'
 import { QuestionsTable } from '../components/QuestionsTable'
 import {
-  useDeleteQuestion,
   useQuestions,
   useSetQuestionActive,
   useUpdateBagliKosul,
@@ -25,6 +24,35 @@ import {
 import { GORUNME_KOSULU_LABEL } from '../utils/question-field-labels'
 import type { QuestionDto } from '../types/question.types'
 
+function buildQuestionUpdatePayload(
+  question: QuestionDto,
+  values: { soruMetni: string; aktif: boolean; zorunlu: boolean },
+): Record<string, unknown> | null {
+  const cevapGirdiTipId = Number(question.cevapGirdiTipId)
+  if (!Number.isFinite(cevapGirdiTipId) || cevapGirdiTipId <= 0) return null
+
+  const payload: Record<string, unknown> = {
+    soruMetni: values.soruMetni,
+    aktif: values.aktif,
+    zorunlu: values.zorunlu,
+    cevapGirdiTipId,
+    bagliSoru: question.bagliSoru,
+  }
+
+  if (question.kaynak === 'AppDb') {
+    payload.baslikId = question.baslikId
+  }
+
+  const altSoruMetni = question.altSoruMetni?.trim()
+  if (altSoruMetni) payload.altSoruMetni = altSoruMetni
+
+  if (question.secenekGrupId != null && question.secenekGrupId > 0) {
+    payload.secenekGrupId = question.secenekGrupId
+  }
+
+  return payload
+}
+
 export function QuestionsPage() {
   const location = useLocation()
   const { canRead, canEdit, loading: permissionLoading } = useRequirePagePermission()
@@ -33,57 +61,85 @@ export function QuestionsPage() {
   const updateQuestion = useUpdateQuestion()
   const updateBagliKosul = useUpdateBagliKosul()
   const setQuestionActive = useSetQuestionActive()
-  const deleteQuestion = useDeleteQuestion()
   const [selectedSurveyId, setSelectedSurveyId] = useState(0)
   const [editingQuestion, setEditingQuestion] = useState<QuestionDto | null>(null)
   const [editText, setEditText] = useState('')
+  const [editAktif, setEditAktif] = useState(true)
+  const [editZorunlu, setEditZorunlu] = useState(false)
   const [editBagliKosulTipi, setEditBagliKosulTipi] = useState(BAGLI_KOSUL_ESIT)
+  const [editSaveError, setEditSaveError] = useState('')
   const questionsQuery = useQuestions(isDefinitionsPage ? selectedSurveyId : undefined)
 
   useEffect(() => {
     if (!isDefinitionsPage) return
     if (selectedSurveyId > 0) return
-    const firstSurveyId = Number(surveysQuery.data?.[0]?.id)
-    if (firstSurveyId > 0) setSelectedSurveyId(firstSurveyId)
+    const surveys = surveysQuery.data
+    if (!surveys?.length) return
+
+    const preferredSurvey = surveys.find(
+      (survey) => survey.name.trim().toLocaleLowerCase('tr-TR') === 'test2',
+    )
+    const defaultSurveyId = Number(preferredSurvey?.id ?? surveys[0]?.id)
+    if (defaultSurveyId > 0) setSelectedSurveyId(defaultSurveyId)
   }, [isDefinitionsPage, selectedSurveyId, surveysQuery.data])
 
   const openEditModal = (question: QuestionDto) => {
     if (!canEdit) return
     setEditingQuestion(question)
     setEditText(question.soruMetni)
+    setEditAktif(question.aktif)
+    setEditZorunlu(question.zorunlu)
     setEditBagliKosulTipi(normalizeBagliKosulTipi(question.bagliKosulTipi))
+    setEditSaveError('')
   }
 
   const closeEditModal = () => {
     setEditingQuestion(null)
     setEditText('')
+    setEditAktif(true)
+    setEditZorunlu(false)
     setEditBagliKosulTipi(BAGLI_KOSUL_ESIT)
+    setEditSaveError('')
   }
 
   const handleEditSave = async () => {
     if (!canEdit || !editingQuestion || !editText.trim()) return
 
     const textChanged = editText.trim() !== editingQuestion.soruMetni
+    const aktifChanged = editAktif !== editingQuestion.aktif
+    const zorunluChanged = editZorunlu !== editingQuestion.zorunlu
+    const questionContentChanged = textChanged || zorunluChanged
     const kosulChanged =
       editingQuestion.bagliSoru &&
       normalizeBagliKosulTipi(editBagliKosulTipi) !==
         normalizeBagliKosulTipi(editingQuestion.bagliKosulTipi)
 
-    if (!textChanged && !kosulChanged) {
+    if (!questionContentChanged && !aktifChanged && !kosulChanged) {
       closeEditModal()
       return
     }
 
+    setEditSaveError('')
+
     try {
-      if (textChanged) {
+      if (questionContentChanged) {
+        const payload = buildQuestionUpdatePayload(editingQuestion, {
+          soruMetni: editText.trim(),
+          aktif: editAktif,
+          zorunlu: editZorunlu,
+        })
+        if (!payload) {
+          setEditSaveError('Cevap tipi bilgisi eksik; soru güncellenemedi.')
+          return
+        }
         await updateQuestion.mutateAsync({
           id: editingQuestion.id,
-          payload: {
-            soruMetni: editText.trim(),
-            aktif: editingQuestion.aktif,
-            zorunlu: editingQuestion.zorunlu,
-            ...(editingQuestion.kaynak === 'AppDb' ? { baslikId: editingQuestion.baslikId } : {}),
-          },
+          payload,
+        })
+      } else if (aktifChanged) {
+        await setQuestionActive.mutateAsync({
+          id: editingQuestion.id,
+          aktif: editAktif,
         })
       }
 
@@ -109,17 +165,10 @@ export function QuestionsPage() {
     })
   }
 
-  const handleDelete = (question: QuestionDto) => {
-    if (!canEdit || question.kaynak !== 'AppDb') return
-    if (!window.confirm('Bu soruyu silmek istediğinize emin misiniz?')) return
-    deleteQuestion.mutate(question.id)
-  }
-
   const isMutating =
     updateQuestion.isPending ||
     updateBagliKosul.isPending ||
-    setQuestionActive.isPending ||
-    deleteQuestion.isPending
+    setQuestionActive.isPending
 
   const surveySelectOptions = (surveysQuery.data ?? []).map((survey) => ({
     key: `${survey.kaynak ?? 'unknown'}-${survey.id}`,
@@ -179,9 +228,7 @@ export function QuestionsPage() {
           onRefresh={refreshQuestions}
           onEdit={canEdit ? openEditModal : undefined}
           onSetPassive={canEdit ? handleSetPassive : undefined}
-          onDelete={canEdit ? handleDelete : undefined}
           isUpdating={isMutating}
-          isDeleting={deleteQuestion.isPending}
         />
       )}
 
@@ -189,7 +236,7 @@ export function QuestionsPage() {
         open={Boolean(editingQuestion)}
         onClose={closeEditModal}
         title="Soruyu Düzenle"
-        description="Soru metni ve temel alanları güncelleyin"
+        description="Soru metni, durum ve koşul alanlarını güncelleyin"
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={closeEditModal}>
@@ -197,7 +244,9 @@ export function QuestionsPage() {
             </Button>
             <Button
               onClick={() => void handleEditSave()}
-              loading={updateQuestion.isPending || updateBagliKosul.isPending}
+              loading={
+                updateQuestion.isPending || updateBagliKosul.isPending || setQuestionActive.isPending
+              }
               disabled={!editText.trim()}
             >
               Kaydet
@@ -213,6 +262,29 @@ export function QuestionsPage() {
             placeholder="Soru metni"
             required
           />
+
+          <div className="flex flex-wrap gap-6">
+            <label className="flex cursor-pointer items-center gap-3">
+              <input
+                type="checkbox"
+                checked={editZorunlu}
+                onChange={(e) => setEditZorunlu(e.target.checked)}
+                className="h-4 w-4 rounded border-border text-primary-500 focus:ring-primary-500"
+              />
+              <span className="text-sm text-foreground">Zorunlu</span>
+            </label>
+
+            <label className="flex cursor-pointer items-center gap-3">
+              <input
+                type="checkbox"
+                checked={editAktif}
+                onChange={(e) => setEditAktif(e.target.checked)}
+                className="h-4 w-4 rounded border-border text-primary-500 focus:ring-primary-500"
+              />
+              <span className="text-sm text-foreground">Aktif</span>
+            </label>
+          </div>
+
           {editingQuestion?.bagliSoru && (
             <Select
               label={GORUNME_KOSULU_LABEL}
@@ -225,9 +297,12 @@ export function QuestionsPage() {
               }))}
             />
           )}
-          {(updateQuestion.isError || updateBagliKosul.isError) && (
+          {(editSaveError || updateQuestion.isError || updateBagliKosul.isError || setQuestionActive.isError) && (
             <p className="text-sm text-red-600" role="alert">
-              {getErrorMessage(updateQuestion.error ?? updateBagliKosul.error)}
+              {editSaveError ||
+                getErrorMessage(
+                  updateQuestion.error ?? updateBagliKosul.error ?? setQuestionActive.error,
+                )}
             </p>
           )}
         </div>
