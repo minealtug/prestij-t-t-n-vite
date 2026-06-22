@@ -42,3 +42,15 @@ export function useUpdateEkiciDefinition() {
     },
   })
 }
+
+export function useDeleteEkiciDefinition() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => ekiciDefinitionsApi.delete(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.ekiciDefinitions.all })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.surveyFill.ekiciler })
+    },
+  })
+}

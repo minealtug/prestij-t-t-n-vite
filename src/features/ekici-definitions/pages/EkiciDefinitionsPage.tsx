@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { getErrorMessage } from '@/lib/api/api-error'
 import { PageContainer } from '@/components/layout/PageContainer'
@@ -9,6 +9,7 @@ import { EkiciDefinitionForm } from '../components/EkiciDefinitionForm'
 import { EkiciDefinitionsTable } from '../components/EkiciDefinitionsTable'
 import {
   useCreateEkiciDefinition,
+  useDeleteEkiciDefinition,
   useEkiciDefinitions,
   useUpdateEkiciDefinition,
 } from '../hooks/use-ekici-definitions'
@@ -18,6 +19,44 @@ import {
   ekiciDefinitionToFormValues,
   getEkiciFullName,
 } from '../utils/normalize-ekici-definition-api'
+import {
+  formatEkiciDisplayText,
+  getEkiciFullNameDisplay,
+} from '../utils/format-ekici-display-text'
+
+function toViewFormValues(ekici: EkiciDefinitionDto) {
+  const values = ekiciDefinitionToFormValues(ekici)
+  return {
+    ...values,
+    ad: formatEkiciDisplayText(values.ad) || values.ad,
+    soyad: formatEkiciDisplayText(values.soyad) || values.soyad,
+    babaAdi: formatEkiciDisplayText(values.babaAdi) || values.babaAdi,
+    anaAdi: formatEkiciDisplayText(values.anaAdi) || values.anaAdi,
+    dogumYeri: formatEkiciDisplayText(values.dogumYeri) || values.dogumYeri,
+  }
+}
+
+function matchesEkiciSearch(ekici: EkiciDefinitionDto, query: string) {
+  const fields = [
+    getEkiciFullName(ekici),
+    ekici.tcKimlikNo,
+    ekici.ad,
+    ekici.soyad,
+    ekici.babaAdi,
+    String(ekici.yil),
+    ekici.menseiAdi,
+    ekici.bolgeAdi,
+    ekici.mintikaAdi,
+    ekici.alimNoktasiAdi,
+    ekici.koyAdi,
+    ekici.makineKodu,
+    ekici.aktif === 1 ? 'evet' : 'hayır',
+  ]
+
+  return fields
+    .filter(Boolean)
+    .some((value) => String(value).toLocaleLowerCase('tr-TR').includes(query))
+}
 
 function isFormValid(values: ReturnType<typeof createEmptyEkiciFormValues>) {
   return (
@@ -41,14 +80,42 @@ export function EkiciDefinitionsPage() {
   const ekicilerQuery = useEkiciDefinitions()
   const createEkici = useCreateEkiciDefinition()
   const updateEkici = useUpdateEkiciDefinition()
+  const deleteEkici = useDeleteEkiciDefinition()
 
+  const [search, setSearch] = useState('')
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [createValues, setCreateValues] = useState(createEmptyEkiciFormValues)
   const [createError, setCreateError] = useState('')
 
+  const [viewingEkici, setViewingEkici] = useState<EkiciDefinitionDto | null>(null)
   const [editingEkici, setEditingEkici] = useState<EkiciDefinitionDto | null>(null)
   const [editValues, setEditValues] = useState(createEmptyEkiciFormValues)
   const [editError, setEditError] = useState('')
+
+  const filteredEkiciler = useMemo(() => {
+    const items = ekicilerQuery.data ?? []
+    const query = search.trim().toLocaleLowerCase('tr-TR')
+    if (!query) return items
+    return items.filter((ekici) => matchesEkiciSearch(ekici, query))
+  }, [ekicilerQuery.data, search])
+
+  const tableEmptyMessage =
+    search.trim().length > 0
+      ? 'Arama kriterlerinize uygun ekici kaydı bulunamadı.'
+      : 'Henüz ekici kaydı bulunmuyor.'
+
+  const uretimMerkeziOptions = useMemo(() => {
+    const ids = new Set<number>()
+    for (const ekici of ekicilerQuery.data ?? []) {
+      if (ekici.uretimMerkeziId > 0) ids.add(ekici.uretimMerkeziId)
+    }
+    return [...ids]
+      .sort((a, b) => a - b)
+      .map((id) => ({
+        value: String(id),
+        label: `Üretim Merkezi ${id}`,
+      }))
+  }, [ekicilerQuery.data])
 
   const openCreateModal = () => {
     if (!canEdit) return
@@ -70,6 +137,14 @@ export function EkiciDefinitionsPage() {
       onSuccess: () => closeCreateModal(),
       onError: (error) => setCreateError(getErrorMessage(error)),
     })
+  }
+
+  const openView = (ekici: EkiciDefinitionDto) => {
+    setViewingEkici(ekici)
+  }
+
+  const closeView = () => {
+    setViewingEkici(null)
   }
 
   const openEdit = (ekici: EkiciDefinitionDto) => {
@@ -97,6 +172,23 @@ export function EkiciDefinitionsPage() {
     )
   }
 
+  const handleDelete = (id: string) => {
+    if (!canEdit) return
+
+    const ekici = (ekicilerQuery.data ?? []).find((item) => item.id === id)
+    if (ekici?.kaynak !== 'AppDb') return
+
+    const label = ekici ? getEkiciFullNameDisplay(ekici) : 'Bu ekici'
+    if (!window.confirm(`${label} kaydını silmek istediğinize emin misiniz?`)) return
+
+    deleteEkici.mutate(id, {
+      onSuccess: () => {
+        if (editingEkici?.id === id) closeEdit()
+        if (viewingEkici?.id === id) closeView()
+      },
+    })
+  }
+
   if (permissionLoading) {
     return (
       <PageContainer>
@@ -109,23 +201,38 @@ export function EkiciDefinitionsPage() {
 
   return (
     <PageContainer>
-      <div className="space-y-4">
-        {canEdit && (
-          <div className="flex justify-end">
-            <Button onClick={openCreateModal}>
-              <Plus className="h-4 w-4" />
-              Yeni Ekici
-            </Button>
+      <div className="app-table-shell !rounded-md">
+        <div className="flex flex-col gap-3 border-b border-[#ececec] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 flex-1 sm:max-w-lg">
+            <Input
+              className="!h-9"
+              placeholder="Ad, soyad, TC, bölge, mıntıka, köy..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Ekici ara"
+            />
           </div>
-        )}
+          <div className="flex flex-wrap items-center gap-3">
+            {canEdit && (
+              <Button onClick={openCreateModal}>
+                Yeni Ekici
+              </Button>
+            )}
+          </div>
+        </div>
 
         <EkiciDefinitionsTable
-          data={ekicilerQuery.data ?? []}
+          data={filteredEkiciler}
           isLoading={ekicilerQuery.isLoading}
           isError={ekicilerQuery.isError}
           error={ekicilerQuery.error}
           onRefresh={() => void ekicilerQuery.refetch()}
+          onView={openView}
           onEdit={canEdit ? openEdit : undefined}
+          onDelete={canEdit ? handleDelete : undefined}
+          isUpdating={updateEkici.isPending}
+          isDeleting={deleteEkici.isPending}
+          emptyMessage={tableEmptyMessage}
         />
       </div>
 
@@ -133,7 +240,7 @@ export function EkiciDefinitionsPage() {
         open={createModalOpen}
         onClose={closeCreateModal}
         title="Yeni Ekici"
-        description="Yeni ekici kayıtları yalnızca uygulama veritabanına kaydedilir."
+    
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={closeCreateModal}>
@@ -144,7 +251,6 @@ export function EkiciDefinitionsPage() {
               loading={createEkici.isPending}
               disabled={!isFormValid(createValues)}
             >
-              <Plus className="h-4 w-4" />
               Ekici Ekle
             </Button>
           </div>
@@ -156,6 +262,7 @@ export function EkiciDefinitionsPage() {
             onChange={setCreateValues}
             disabled={createEkici.isPending}
             idPrefix="create-ekici"
+            uretimMerkeziOptions={uretimMerkeziOptions}
           />
           {(createEkici.isError || createError) && (
             <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
@@ -166,9 +273,44 @@ export function EkiciDefinitionsPage() {
       </Modal>
 
       <Modal
+        open={Boolean(viewingEkici)}
+        onClose={closeView}
+        title={viewingEkici ? `${getEkiciFullNameDisplay(viewingEkici)} — Detay` : 'Ekici Detayı'}
+        description={
+          viewingEkici?.kaynak === 'LegacyDb'
+            ? 'Legacy veritabanı kaydı — salt okunur.'
+            : 'Ekici kayıt detayları.'
+        }
+        footer={
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={closeView}>
+              Kapat
+            </Button>
+          </div>
+        }
+      >
+        {viewingEkici && (
+          <EkiciDefinitionForm
+            values={toViewFormValues(viewingEkici)}
+            onChange={() => {}}
+            disabled
+            idPrefix="view-ekici"
+            uretimMerkeziOptions={uretimMerkeziOptions}
+            locationLabels={{
+              menseiAdi: viewingEkici.menseiAdi,
+              bolgeAdi: viewingEkici.bolgeAdi,
+              mintikaAdi: viewingEkici.mintikaAdi,
+              alimNoktasiAdi: viewingEkici.alimNoktasiAdi,
+              koyAdi: viewingEkici.koyAdi,
+            }}
+          />
+        )}
+      </Modal>
+
+      <Modal
         open={Boolean(editingEkici)}
         onClose={closeEdit}
-        title={editingEkici ? `${getEkiciFullName(editingEkici)} — Düzenle` : 'Ekici Düzenle'}
+        title={editingEkici ? `${getEkiciFullNameDisplay(editingEkici)} — Düzenle` : 'Ekici Düzenle'}
         description="Yalnızca uygulama veritabanındaki ekici kayıtları güncellenebilir."
         footer={
           <div className="flex justify-end gap-2">
@@ -191,6 +333,18 @@ export function EkiciDefinitionsPage() {
             onChange={setEditValues}
             disabled={updateEkici.isPending}
             idPrefix="edit-ekici"
+            uretimMerkeziOptions={uretimMerkeziOptions}
+            locationLabels={
+              editingEkici
+                ? {
+                    menseiAdi: editingEkici.menseiAdi,
+                    bolgeAdi: editingEkici.bolgeAdi,
+                    mintikaAdi: editingEkici.mintikaAdi,
+                    alimNoktasiAdi: editingEkici.alimNoktasiAdi,
+                    koyAdi: editingEkici.koyAdi,
+                  }
+                : undefined
+            }
           />
           {(updateEkici.isError || editError) && (
             <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">

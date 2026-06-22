@@ -1,9 +1,9 @@
-import { Pencil, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Table, type TableColumn } from '@/components/ui/Table'
 import { ErrorState } from '@/components/feedback/ErrorState'
+import { cn } from '@/lib/utils/cn'
 import type { EkiciDefinitionDto } from '../types/ekici-definition.types'
-import { getEkiciFullName } from '../utils/normalize-ekici-definition-api'
+import { formatEkiciDisplayText, getEkiciFullNameDisplay } from '../utils/format-ekici-display-text'
 
 interface EkiciDefinitionsTableProps {
   data: EkiciDefinitionDto[]
@@ -11,13 +11,36 @@ interface EkiciDefinitionsTableProps {
   isError: boolean
   error: unknown
   onRefresh: () => void
+  onView?: (ekici: EkiciDefinitionDto) => void
   onEdit?: (ekici: EkiciDefinitionDto) => void
+  onDelete?: (id: string) => void
+  isUpdating?: boolean
+  isDeleting?: boolean
+  emptyMessage?: string
 }
 
 function renderLocationLabel(value: string | null | undefined, fallbackId?: number) {
-  if (value?.trim()) return value.trim()
+  if (value?.trim()) return formatEkiciDisplayText(value)
   if (fallbackId != null && fallbackId > 0) return `#${fallbackId}`
   return '—'
+}
+
+const actionButtonClass = '!h-7 !px-2 !text-xs'
+
+function AktifBadge({ aktif }: { aktif: number }) {
+  const isActive = aktif === 1
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium leading-tight',
+        isActive
+          ? 'border-green-200 bg-green-50 text-green-700'
+          : 'border-border bg-muted/10 text-muted',
+      )}
+    >
+      {isActive ? 'Evet' : 'Hayır'}
+    </span>
+  )
 }
 
 export function EkiciDefinitionsTable({
@@ -26,91 +49,115 @@ export function EkiciDefinitionsTable({
   isError,
   error,
   onRefresh,
+  onView,
   onEdit,
+  onDelete,
+  isUpdating = false,
+  isDeleting = false,
+  emptyMessage = 'Henüz ekici kaydı bulunmuyor.',
 }: EkiciDefinitionsTableProps) {
   const columns: TableColumn<EkiciDefinitionDto>[] = [
     {
       key: 'ad',
-      header: 'EKİCİ',
-      className: 'min-w-[220px]',
+      header: 'Ekici',
+      className: 'min-w-[150px]',
       render: (row) => (
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-500/10 text-primary-600">
-            <UserRound className="h-4 w-4" />
-          </div>
-          <div>
-            <div className="font-medium text-foreground">{getEkiciFullName(row)}</div>
-            <div className="text-xs text-muted">{row.tcKimlikNo || '—'}</div>
-          </div>
+        <div className="leading-snug">
+          <div className="font-medium text-foreground">{getEkiciFullNameDisplay(row)}</div>
+          <div className="text-[11px] text-muted">{row.tcKimlikNo || '—'}</div>
         </div>
       ),
     },
     {
       key: 'yil',
-      header: 'YIL',
-      className: 'w-20',
+      header: 'Yıl',
+      className: 'w-14',
       render: (row) => row.yil || '—',
     },
     {
       key: 'menseiAdi',
-      header: 'MENŞEİ',
-      className: 'min-w-[120px]',
+      header: 'Menşei',
+      className: 'min-w-[90px]',
       render: (row) => renderLocationLabel(row.menseiAdi, row.menseiId),
     },
     {
       key: 'bolgeAdi',
-      header: 'BÖLGE',
-      className: 'min-w-[120px]',
+      header: 'Bölge',
+      className: 'min-w-[90px]',
       render: (row) => renderLocationLabel(row.bolgeAdi, row.bolgeId),
     },
     {
       key: 'mintikaAdi',
-      header: 'MINTIKA',
-      className: 'min-w-[120px]',
+      header: 'Mıntıka',
+      className: 'min-w-[90px]',
       render: (row) => renderLocationLabel(row.mintikaAdi, row.mintikaId),
     },
     {
       key: 'alimNoktasiAdi',
-      header: 'ALIM NOKTASI',
-      className: 'min-w-[140px]',
+      header: 'Alım Noktası',
+      className: 'min-w-[100px]',
       render: (row) => renderLocationLabel(row.alimNoktasiAdi, row.alimNoktasiId),
     },
     {
       key: 'koyAdi',
-      header: 'KÖY',
-      className: 'min-w-[120px]',
+      header: 'Köy',
+      className: 'min-w-[80px]',
       render: (row) => renderLocationLabel(row.koyAdi, row.koyId),
     },
     {
       key: 'aktif',
-      header: 'AKTİF',
-      className: 'w-20',
-      render: (row) => (
-        <span className={row.aktif === 1 ? 'font-medium text-primary-600' : 'text-muted'}>
-          {row.aktif === 1 ? 'Evet' : 'Hayır'}
-        </span>
-      ),
+      header: 'Aktif',
+      className: 'w-14',
+      render: (row) => <AktifBadge aktif={row.aktif} />,
     },
-    ...(onEdit
+    ...(onView || onEdit || onDelete
       ? [
           {
             key: 'actions',
-            header: 'İŞLEMLER',
-            className: 'w-24',
-            render: (row: EkiciDefinitionDto) =>
-              row.kaynak === 'AppDb' ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="!h-7 !w-7 !p-0"
-                  aria-label="Düzenle"
-                  onClick={() => onEdit(row)}
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-              ) : (
-                <span className="text-xs text-muted">Salt okunur</span>
-              ),
+            header: 'İşlemler',
+            className: 'min-w-[190px]',
+            render: (row: EkiciDefinitionDto) => {
+              const isAppDb = row.kaynak === 'AppDb'
+              const actionsDisabled = isUpdating || isDeleting
+
+              return (
+                <div className="flex flex-wrap gap-1">
+                  {onView && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={actionButtonClass}
+                      disabled={actionsDisabled}
+                      onClick={() => onView(row)}
+                    >
+                      Görüntüle
+                    </Button>
+                  )}
+                  {onEdit && isAppDb && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={actionButtonClass}
+                      disabled={actionsDisabled}
+                      onClick={() => onEdit(row)}
+                    >
+                      Düzenle
+                    </Button>
+                  )}
+                  {onDelete && isAppDb && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={`${actionButtonClass} !text-red-600`}
+                      disabled={actionsDisabled}
+                      onClick={() => onDelete(row.id)}
+                    >
+                      Sil
+                    </Button>
+                  )}
+                </div>
+              )
+            },
           },
         ]
       : []),
@@ -125,9 +172,14 @@ export function EkiciDefinitionsTable({
       columns={columns}
       data={data}
       isLoading={isLoading}
-      emptyMessage="Henüz ekici kaydı bulunmuyor."
+      emptyMessage={emptyMessage}
       keyExtractor={(row) => row.id}
+      compact
+      variant="plain"
+      className="!rounded-none !border-0"
+      tableClassName="app-table-cols"
       pagination={{ pageSize: 20, pageSizeOptions: [20, 50, 100] }}
     />
   )
 }
+

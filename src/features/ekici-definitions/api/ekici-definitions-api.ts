@@ -41,4 +41,8 @@ export const ekiciDefinitionsApi = {
     if (!mapped) throw new Error('Ekici kaydı güncellenemedi.')
     return mapped
   },
+
+  delete: async (id: string): Promise<void> => {
+    await apiClient.delete<void>(`/api/Ekici/${id}`)
+  },
 }

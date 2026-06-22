@@ -1,39 +1,107 @@
+import { useMemo } from 'react'
 import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
+import { SearchableSelect } from '@/components/ui/SearchableSelect'
+import { useCografiFiltreOptions } from '@/features/survey-responses/hooks/use-survey-response-filters'
+import type { FilterOptionDto } from '@/features/survey-responses/types/survey-response.types'
+import {
+  getAlimNoktalariForMintika,
+  getBolgelerForMensei,
+  getKoylerForAlimNoktasi,
+  getMintikalarForBolge,
+} from '@/features/survey-responses/utils/cografi-filtre'
 import type { EkiciDefinitionFormValues } from '../types/ekici-definition.types'
+import { formatEkiciDisplayText } from '../utils/format-ekici-display-text'
 
 interface EkiciDefinitionFormProps {
   values: EkiciDefinitionFormValues
   onChange: (values: EkiciDefinitionFormValues) => void
   disabled?: boolean
   idPrefix?: string
+  locationLabels?: {
+    menseiAdi?: string | null
+    bolgeAdi?: string | null
+    mintikaAdi?: string | null
+    alimNoktasiAdi?: string | null
+    koyAdi?: string | null
+  }
+  uretimMerkeziOptions?: { value: string; label: string }[]
 }
 
-function NumberField({
+const EKICI_DURUM_LABELS: Record<number, string> = {
+  1: 'Aktif',
+  2: 'Pasif',
+}
+
+function CheckboxField({
   label,
-  value,
+  checked,
   onChange,
   disabled,
-  id,
-  required = true,
 }: {
   label: string
-  value: number
-  onChange: (value: number) => void
+  checked: boolean
+  onChange: (checked: boolean) => void
   disabled?: boolean
-  id: string
-  required?: boolean
 }) {
   return (
-    <Input
-      id={id}
-      label={label}
-      type="number"
-      value={Number.isFinite(value) ? String(value) : ''}
-      onChange={(e) => onChange(Number(e.target.value) || 0)}
-      disabled={disabled}
-      required={required}
-    />
+    <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-border/70 px-3 py-2.5">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        disabled={disabled}
+        className="h-4 w-4 rounded border-border text-primary-500 focus:ring-primary-500 disabled:cursor-not-allowed"
+      />
+      <span className="text-sm text-foreground">{label}</span>
+    </label>
   )
+}
+
+function SectionTitle({ children }: { children: string }) {
+  return (
+    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted md:col-span-2 xl:col-span-3">
+      {children}
+    </h3>
+  )
+}
+
+function toSelectOptions(
+  items: FilterOptionDto[],
+  placeholder: string,
+  selectedId?: number,
+  selectedLabel?: string | null,
+) {
+  const options: { value: string; label: string }[] = [{ value: '', label: placeholder }]
+  const seen = new Set<number>()
+
+  for (const item of items) {
+    options.push({
+      value: String(item.id),
+      label: formatEkiciDisplayText(item.adi) || item.adi,
+    })
+    seen.add(item.id)
+  }
+
+  if (selectedId != null && selectedId > 0 && !seen.has(selectedId)) {
+    options.push({
+      value: String(selectedId),
+      label: formatEkiciDisplayText(selectedLabel) || selectedLabel?.trim() || `#${selectedId}`,
+    })
+  }
+
+  return options
+}
+
+function getEkiciDurumOptions(currentId: number) {
+  const ids = new Set<number>([1, 2, currentId].filter((id) => id > 0))
+  return [
+    { value: '', label: 'Durum seçin' },
+    ...[...ids].sort((a, b) => a - b).map((id) => ({
+      value: String(id),
+      label: EKICI_DURUM_LABELS[id] ?? `Durum #${id}`,
+    })),
+  ]
 }
 
 export function EkiciDefinitionForm({
@@ -41,13 +109,98 @@ export function EkiciDefinitionForm({
   onChange,
   disabled = false,
   idPrefix = 'ekici',
+  locationLabels,
+  uretimMerkeziOptions = [],
 }: EkiciDefinitionFormProps) {
+  const cografiFiltreQuery = useCografiFiltreOptions()
+  const cografiFiltre = cografiFiltreQuery.data
+
   const set = <K extends keyof EkiciDefinitionFormValues>(key: K, value: EkiciDefinitionFormValues[K]) => {
     onChange({ ...values, [key]: value })
   }
 
+  const bolgeler = useMemo(
+    () => (cografiFiltre ? getBolgelerForMensei(cografiFiltre, values.menseiId || undefined) : []),
+    [cografiFiltre, values.menseiId],
+  )
+  const mintikalar = useMemo(
+    () => (cografiFiltre ? getMintikalarForBolge(cografiFiltre, values.bolgeId || undefined) : []),
+    [cografiFiltre, values.bolgeId],
+  )
+  const alimNoktalari = useMemo(
+    () => (cografiFiltre ? getAlimNoktalariForMintika(cografiFiltre, values.mintikaId || undefined) : []),
+    [cografiFiltre, values.mintikaId],
+  )
+  const koyler = useMemo(
+    () =>
+      cografiFiltre ? getKoylerForAlimNoktasi(cografiFiltre, values.alimNoktasiId || undefined) : [],
+    [cografiFiltre, values.alimNoktasiId],
+  )
+
+  const menseiOptions = useMemo(
+    () =>
+      toSelectOptions(
+        cografiFiltre?.menseiler ?? [],
+        'Menşei seçin',
+        values.menseiId,
+        locationLabels?.menseiAdi,
+      ),
+    [cografiFiltre?.menseiler, values.menseiId, locationLabels?.menseiAdi],
+  )
+  const bolgeOptions = useMemo(
+    () =>
+      toSelectOptions(bolgeler, 'Bölge seçin', values.bolgeId, locationLabels?.bolgeAdi),
+    [bolgeler, values.bolgeId, locationLabels?.bolgeAdi],
+  )
+  const mintikaOptions = useMemo(
+    () =>
+      toSelectOptions(mintikalar, 'Mıntıka seçin', values.mintikaId, locationLabels?.mintikaAdi),
+    [mintikalar, values.mintikaId, locationLabels?.mintikaAdi],
+  )
+  const alimNoktasiOptions = useMemo(
+    () =>
+      toSelectOptions(
+        alimNoktalari,
+        'Alım noktası seçin',
+        values.alimNoktasiId,
+        locationLabels?.alimNoktasiAdi,
+      ),
+    [alimNoktalari, values.alimNoktasiId, locationLabels?.alimNoktasiAdi],
+  )
+  const koyOptions = useMemo(
+    () => toSelectOptions(koyler, 'Köy seçin', values.koyId, locationLabels?.koyAdi),
+    [koyler, values.koyId, locationLabels?.koyAdi],
+  )
+
+  const uretimMerkeziSelectOptions = useMemo(() => {
+    const options = [{ value: '', label: 'Üretim merkezi seçin' }]
+    const seen = new Set<string>()
+
+    for (const option of uretimMerkeziOptions) {
+      options.push(option)
+      seen.add(option.value)
+    }
+
+    if (values.uretimMerkeziId > 0 && !seen.has(String(values.uretimMerkeziId))) {
+      options.push({
+        value: String(values.uretimMerkeziId),
+        label: `Üretim Merkezi ${values.uretimMerkeziId}`,
+      })
+    }
+
+    return options
+  }, [uretimMerkeziOptions, values.uretimMerkeziId])
+
+  const ekiciDurumOptions = useMemo(
+    () => getEkiciDurumOptions(values.ekiciDurumId),
+    [values.ekiciDurumId],
+  )
+
+  const geoDisabled = disabled || cografiFiltreQuery.isLoading
+
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <SectionTitle>Kimlik Bilgileri</SectionTitle>
       <Input
         id={`${idPrefix}-tc`}
         label="TC Kimlik No"
@@ -103,62 +256,114 @@ export function EkiciDefinitionForm({
         disabled={disabled}
         required
       />
-      <NumberField
+      <Input
         id={`${idPrefix}-yil`}
         label="Yıl"
-        value={values.yil}
-        onChange={(value) => set('yil', value)}
+        type="number"
+        value={Number.isFinite(values.yil) ? String(values.yil) : ''}
+        onChange={(e) => set('yil', Number(e.target.value) || new Date().getFullYear())}
         disabled={disabled}
+        required
       />
-      <NumberField
-        id={`${idPrefix}-mintika`}
-        label="Mıntıka ID"
-        value={values.mintikaId}
-        onChange={(value) => set('mintikaId', value)}
-        disabled={disabled}
-      />
-      <NumberField
-        id={`${idPrefix}-bolge`}
-        label="Bölge ID"
-        value={values.bolgeId}
-        onChange={(value) => set('bolgeId', value)}
-        disabled={disabled}
-      />
-      <NumberField
+
+      <SectionTitle>Coğrafi Bilgiler</SectionTitle>
+      <Select
         id={`${idPrefix}-mensei`}
-        label="Menşei ID"
-        value={values.menseiId}
-        onChange={(value) => set('menseiId', value)}
-        disabled={disabled}
+        label="Menşei"
+        value={values.menseiId > 0 ? String(values.menseiId) : ''}
+        options={menseiOptions}
+        disabled={geoDisabled}
+        required
+        onChange={(e) => {
+          const menseiId = Number(e.target.value) || 0
+          onChange({
+            ...values,
+            menseiId,
+            bolgeId: 0,
+            mintikaId: 0,
+            alimNoktasiId: 0,
+            koyId: 0,
+          })
+        }}
       />
-      <NumberField
+      <Select
+        id={`${idPrefix}-bolge`}
+        label="Bölge"
+        value={values.bolgeId > 0 ? String(values.bolgeId) : ''}
+        options={bolgeOptions}
+        disabled={geoDisabled || values.menseiId <= 0}
+        required
+        onChange={(e) => {
+          const bolgeId = Number(e.target.value) || 0
+          onChange({
+            ...values,
+            bolgeId,
+            mintikaId: 0,
+            alimNoktasiId: 0,
+            koyId: 0,
+          })
+        }}
+      />
+      <Select
+        id={`${idPrefix}-mintika`}
+        label="Mıntıka"
+        value={values.mintikaId > 0 ? String(values.mintikaId) : ''}
+        options={mintikaOptions}
+        disabled={geoDisabled || values.bolgeId <= 0}
+        required
+        onChange={(e) => {
+          const mintikaId = Number(e.target.value) || 0
+          onChange({
+            ...values,
+            mintikaId,
+            alimNoktasiId: 0,
+            koyId: 0,
+          })
+        }}
+      />
+      <Select
         id={`${idPrefix}-alim`}
-        label="Alım Noktası ID"
-        value={values.alimNoktasiId}
-        onChange={(value) => set('alimNoktasiId', value)}
-        disabled={disabled}
+        label="Alım Noktası"
+        value={values.alimNoktasiId > 0 ? String(values.alimNoktasiId) : ''}
+        options={alimNoktasiOptions}
+        disabled={geoDisabled || values.mintikaId <= 0}
+        required
+        onChange={(e) => {
+          const alimNoktasiId = Number(e.target.value) || 0
+          onChange({
+            ...values,
+            alimNoktasiId,
+            koyId: 0,
+          })
+        }}
       />
-      <NumberField
+      <Select
         id={`${idPrefix}-koy`}
-        label="Köy ID"
-        value={values.koyId}
-        onChange={(value) => set('koyId', value)}
-        disabled={disabled}
+        label="Köy"
+        value={values.koyId > 0 ? String(values.koyId) : ''}
+        options={koyOptions}
+        disabled={geoDisabled || values.alimNoktasiId <= 0}
+        required
+        onChange={(e) => set('koyId', Number(e.target.value) || 0)}
       />
-      <NumberField
-        id={`${idPrefix}-uretim`}
-        label="Üretim Merkezi ID"
-        value={values.uretimMerkeziId}
-        onChange={(value) => set('uretimMerkeziId', value)}
+      <SearchableSelect
+        label="Üretim Merkezi"
+        value={values.uretimMerkeziId > 0 ? String(values.uretimMerkeziId) : ''}
+        options={uretimMerkeziSelectOptions}
+        placeholder="Üretim merkezi ara veya seç..."
+        emptyMessage="Üretim merkezi bulunamadı"
         disabled={disabled}
+        onChange={(value) => set('uretimMerkeziId', Number(value) || 0)}
       />
-      <NumberField
+
+      <SectionTitle>Ek Bilgiler</SectionTitle>
+      <Input
         id={`${idPrefix}-ozkont`}
-        label="Öz Kont No"
-        value={values.ozKontNo}
-        onChange={(value) => set('ozKontNo', value)}
+        label="Öz Kontrol No"
+        type="number"
+        value={Number.isFinite(values.ozKontNo) ? String(values.ozKontNo) : ''}
+        onChange={(e) => set('ozKontNo', Number(e.target.value) || 0)}
         disabled={disabled}
-        required={false}
       />
       <Input
         id={`${idPrefix}-makine`}
@@ -167,50 +372,46 @@ export function EkiciDefinitionForm({
         onChange={(e) => set('makineKodu', e.target.value.slice(0, 3))}
         disabled={disabled}
         maxLength={3}
+        placeholder="Örn. 001"
         required
       />
-      <NumberField
+      <Select
         id={`${idPrefix}-durum`}
-        label="Ekici Durum ID"
-        value={values.ekiciDurumId}
-        onChange={(value) => set('ekiciDurumId', value)}
+        label="Ekici Durumu"
+        value={values.ekiciDurumId > 0 ? String(values.ekiciDurumId) : ''}
+        options={ekiciDurumOptions}
         disabled={disabled}
-      />
-      <NumberField
-        id={`${idPrefix}-aktif`}
-        label="Aktif (1/0)"
-        value={values.aktif}
-        onChange={(value) => set('aktif', value)}
-        disabled={disabled}
+        required
+        onChange={(e) => set('ekiciDurumId', Number(e.target.value) || 1)}
       />
 
-      <label className="flex items-center gap-2 text-sm text-foreground md:col-span-2 xl:col-span-3">
-        <input
-          type="checkbox"
-          checked={values.icralik}
-          onChange={(e) => set('icralik', e.target.checked)}
+      <SectionTitle>Durum</SectionTitle>
+      <div className="md:col-span-2 xl:col-span-3">
+        <CheckboxField
+          label="Aktif"
+          checked={values.aktif === 1}
           disabled={disabled}
+          onChange={(checked) => set('aktif', checked ? 1 : 0)}
         />
-        İcralık
-      </label>
-      <label className="flex items-center gap-2 text-sm text-foreground">
-        <input
-          type="checkbox"
-          checked={values.temlik}
-          onChange={(e) => set('temlik', e.target.checked)}
-          disabled={disabled}
-        />
-        Temlik
-      </label>
-      <label className="flex items-center gap-2 text-sm text-foreground">
-        <input
-          type="checkbox"
-          checked={values.sozlesmeIptal}
-          onChange={(e) => set('sozlesmeIptal', e.target.checked)}
-          disabled={disabled}
-        />
-        Sözleşme İptal
-      </label>
+      </div>
+      <CheckboxField
+        label="İcralık"
+        checked={values.icralik}
+        disabled={disabled}
+        onChange={(checked) => set('icralik', checked)}
+      />
+      <CheckboxField
+        label="Temlik"
+        checked={values.temlik}
+        disabled={disabled}
+        onChange={(checked) => set('temlik', checked)}
+      />
+      <CheckboxField
+        label="Sözleşme İptal"
+        checked={values.sozlesmeIptal}
+        disabled={disabled}
+        onChange={(checked) => set('sozlesmeIptal', checked)}
+      />
     </div>
   )
 }
