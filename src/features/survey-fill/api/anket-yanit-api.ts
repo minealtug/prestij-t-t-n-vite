@@ -35,6 +35,8 @@ export function isAnketCevapNotFoundError(error: unknown): boolean {
   return (
     normalized.includes('anket cevap bulunamadi') ||
     normalized.includes('anket cevap bulunamadı') ||
+    normalized.includes('icin anket cevap bulunamadi') ||
+    normalized.includes('için anket cevap bulunamadı') ||
     normalized.includes('status code 404')
   )
 }

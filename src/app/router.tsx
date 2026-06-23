@@ -22,15 +22,17 @@ import { NotFoundPage } from '@/pages/NotFoundPage'
 
 export const router = createBrowserRouter([
   {
+    path: '/login',
     element: <GuestRoute />,
     children: [
       {
         element: <AuthLayout />,
-        children: [{ path: '/login', element: <LoginPage /> }],
+        children: [{ index: true, element: <LoginPage /> }],
       },
     ],
   },
   {
+    path: '/',
     element: <ProtectedRoute />,
     children: [
       {
@@ -49,6 +51,10 @@ export const router = createBrowserRouter([
           { path: 'anket-doldurma', element: <SurveyFillPage /> },
           { path: 'anket-cevaplari', element: <SurveyResponsesPage /> },
           { path: 'cevapladigim-anketler', element: <MySurveyResponsesPage /> },
+          {
+            path: 'cevapladığım-anketler',
+            element: <Navigate to="/cevapladigim-anketler" replace />,
+          },
           { path: 'raporlar', element: <ReportsPage /> },
           { path: 'raporlar/yas-cinsiyet', element: <AgeGenderReportPage /> },
           { path: 'tanimlamalar', element: <ModulePage /> },

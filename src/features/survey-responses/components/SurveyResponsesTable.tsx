@@ -126,7 +126,7 @@ export function SurveyResponsesTable({
                   <EmptyState
                     compact
                     title="Henüz anket cevabı yok"
-                    description="Filtreleri değiştirin veya API bağlantısını kontrol edin."
+                    description="Bu kriterlere uygun kayıtlı anket cevabı bulunmuyor."
                   />
                 </td>
               </tr>

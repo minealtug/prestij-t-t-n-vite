@@ -19,7 +19,7 @@ import {
   mapAnketCevapDetayFromApi,
   mapAnketCevapOzetFromApi,
 } from '../utils/normalize-survey-response-api'
-import { anketYanitApi } from '@/features/survey-fill/api/anket-yanit-api'
+import { anketYanitApi, isAnketCevapNotFoundError } from '@/features/survey-fill/api/anket-yanit-api'
 import { mapCografiFiltreOptionsFromApi } from '../utils/cografi-filtre'
 import { mapOturumToCevapDetay } from '../utils/map-oturum-to-cevap-detay'
 
@@ -93,22 +93,29 @@ function unwrapKullaniciCevapPage(raw: unknown): { items: unknown[]; totalPages:
 }
 
 async function fetchKullaniciCevapOzetList(kullaniciId: string): Promise<AnketCevapOzetItem[]> {
-  const pageSize = 50
-  let page = 1
-  const allItems: unknown[] = []
+  try {
+    const pageSize = 50
+    let page = 1
+    const allItems: unknown[] = []
 
-  while (true) {
-    const raw = await apiClient.get<unknown>(
-      `/api/AnketCevap/kullanici/${encodeURIComponent(kullaniciId)}`,
-      { page, pageSize },
-    )
-    const { items, totalPages } = unwrapKullaniciCevapPage(raw)
-    allItems.push(...items)
-    if (page >= totalPages) break
-    page += 1
+    while (true) {
+      const raw = await apiClient.get<unknown>(
+        `/api/AnketCevap/kullanici/${encodeURIComponent(kullaniciId)}`,
+        { page, pageSize },
+      )
+      const { items, totalPages } = unwrapKullaniciCevapPage(raw)
+      allItems.push(...items)
+      if (page >= totalPages) break
+      page += 1
+    }
+
+    return mapAndFilterAnketCevapItems(allItems, {})
+  } catch (error) {
+    if (isAnketCevapNotFoundError(error)) {
+      return []
+    }
+    throw error
   }
-
-  return mapAndFilterAnketCevapItems(allItems, {})
 }
 
 async function fetchAnketCevapListFromApi(
