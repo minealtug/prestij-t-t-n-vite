@@ -3,6 +3,10 @@ import { normalizeBagliKosulTipi } from '@/features/questions/utils/bagli-kosul-
 import type { AnketYanitOturumDto, AnketYanitSoruDto } from '../types/anket-yanit.types'
 import type { AnswerTypeKindLookup } from './build-answer-type-kind-lookup'
 import { isEkiciProducerQuestion } from './is-ekici-producer-question'
+import {
+  formatMultiSelectValue,
+  isMultiSelectValueAnswered,
+} from './multi-select-value'
 import { getQuestionKey } from './question-key'
 import { resolveEffectiveQuestionInputKind } from './resolve-question-input-kind'
 import { sortQuestionsUnderParents } from './sort-survey-fill-questions'
@@ -43,6 +47,7 @@ export function mapQuestionDefinitionToOturumPreview(
     yanitlandi: false,
     cevapText: null,
     cevapAltSecenekId: null,
+    cevapAltSecenekIds: [],
     ekiciId: null,
   }
 }
@@ -110,6 +115,10 @@ function isQuestionAnswered(
     return value === 'true'
   }
 
+  if (kind === 'multiSelect') {
+    return isMultiSelectValueAnswered(value)
+  }
+
   if (kind === 'select') {
     const optionId = Number(value)
     return Number.isFinite(optionId) && optionId > 0
@@ -125,6 +134,7 @@ function isQuestionAnswered(
 function hasPersistedAnswer(question: AnketYanitSoruDto): boolean {
   if (!question.yanitlandi) return false
   return (
+    (question.cevapAltSecenekIds?.length ?? 0) > 0 ||
     question.cevapAltSecenekId != null ||
     Boolean(question.cevapText?.trim()) ||
     Boolean(question.ekiciId?.trim())
@@ -169,6 +179,14 @@ export function getInitialAnswerValue(
   if (kind === 'checkbox') {
     const text = soru.cevapText?.trim().toLocaleLowerCase('tr-TR')
     return text === 'evet' || text === 'true' ? 'true' : 'false'
+  }
+
+  if (kind === 'multiSelect') {
+    if ((soru.cevapAltSecenekIds?.length ?? 0) > 0) {
+      return formatMultiSelectValue(soru.cevapAltSecenekIds!)
+    }
+    if (soru.cevapAltSecenekId != null) return String(soru.cevapAltSecenekId)
+    return ''
   }
 
   if (kind === 'select') {

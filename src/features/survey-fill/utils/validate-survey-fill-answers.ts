@@ -1,5 +1,6 @@
 import type { SurveyFillSoruView } from '../types/anket-yanit.types'
 import type { AnswerTypeKindLookup } from './build-answer-type-kind-lookup'
+import { isMultiSelectValueAnswered } from './multi-select-value'
 import { resolveEffectiveQuestionInputKind } from './resolve-question-input-kind'
 import { getQuestionKey } from './question-key'
 
@@ -15,6 +16,10 @@ export function validateSurveyFillAnswer(
 
   if (kind === 'checkbox') {
     return value === 'true' ? undefined : 'Bu soru zorunludur.'
+  }
+
+  if (kind === 'multiSelect') {
+    return isMultiSelectValueAnswered(value) ? undefined : 'En az bir seçenek işaretleyin.'
   }
 
   if (kind === 'ekici') {

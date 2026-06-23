@@ -1,5 +1,6 @@
 import type { AnketYanitCevapRequest, AnketYanitSoruDto } from '../types/anket-yanit.types'
 import type { AnswerTypeKindLookup } from './build-answer-type-kind-lookup'
+import { parseMultiSelectValue } from './multi-select-value'
 import { resolveEffectiveQuestionInputKind } from './resolve-question-input-kind'
 
 export function buildAnketYanitCevapRequest(
@@ -31,6 +32,19 @@ export function buildAnketYanitCevapRequest(
       return { ...base, cevapAltSecenekId: optionId, cevapText: null }
     }
     return { ...base, cevapText: value.trim() || null }
+  }
+
+  if (kind === 'multiSelect') {
+    const optionIds = parseMultiSelectValue(value)
+    if (optionIds.length > 0) {
+      return {
+        ...base,
+        cevapAltSecenekIds: optionIds,
+        cevapAltSecenekId: optionIds[0],
+        cevapText: null,
+      }
+    }
+    return { ...base, cevapAltSecenekIds: [], cevapText: null }
   }
 
   if (kind === 'checkbox') {

@@ -11,6 +11,10 @@ import { getFriendlyAnswerTypeLabel } from '@/features/questions/utils/answer-ty
 import { getQuestionKey } from '../utils/question-key'
 import { getSurveyFillQuestionLabel } from '../utils/is-ekici-producer-question'
 import {
+  parseMultiSelectValue,
+  toggleMultiSelectValue,
+} from '../utils/multi-select-value'
+import {
   hasSecenekGrupDropdown,
   resolveEffectiveQuestionInputKind,
   type QuestionInputKind,
@@ -44,9 +48,20 @@ function renderAnswerControl(
     ekiciOptions: SearchableSelectOption[]
     ekiciLoading: boolean
     label?: string
+    selectOptions?: { value: string; label: string }[]
   },
 ) {
-  const { fieldId, value, error, disabled, onChange, ekiciOptions, ekiciLoading, label } = props
+  const {
+    fieldId,
+    value,
+    error,
+    disabled,
+    onChange,
+    ekiciOptions,
+    ekiciLoading,
+    label,
+    selectOptions = [],
+  } = props
 
   if (kind === 'ekici') {
     return (
@@ -102,6 +117,44 @@ function renderAnswerControl(
     )
   }
 
+  if (kind === 'multiSelect') {
+    const selectedIds = new Set(parseMultiSelectValue(value))
+
+    return (
+      <>
+        {label ? <p className="mb-1.5 text-sm font-medium text-foreground">{label}</p> : null}
+        <div className="space-y-2 rounded-lg border border-border/70 bg-surface p-3">
+          {selectOptions.length === 0 ? (
+            <p className="text-sm text-muted">Seçenek bulunamadı</p>
+          ) : (
+            selectOptions.map((option) => (
+            <label
+              key={option.value}
+              className={cn(
+                'flex items-start gap-3 rounded-md px-1 py-1.5',
+                disabled ? 'cursor-not-allowed' : 'cursor-pointer',
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={selectedIds.has(Number(option.value))}
+                disabled={disabled}
+                onChange={(e) =>
+                  onChange(
+                    toggleMultiSelectValue(value, Number(option.value), e.target.checked),
+                  )
+                }
+                className="mt-0.5 h-4 w-4 rounded border-border text-primary-500 focus:ring-primary-500"
+              />
+              <span className="text-sm text-foreground">{option.label}</span>
+            </label>
+            ))
+          )}
+        </div>
+      </>
+    )
+  }
+
   return (
     <Input
       id={fieldId}
@@ -140,8 +193,9 @@ export function SurveyFillQuestionField({
   onDisableManualEntry,
 }: SurveyFillQuestionFieldProps) {
   const fieldId = `survey-fill-${getQuestionKey(question)}`
-  const showSecenekDropdown = hasSecenekGrupDropdown(question) && !useManualEntry
   const kind = resolveEffectiveQuestionInputKind(question, answerTypeLookup, useManualEntry)
+  const showSecenekDropdown =
+    kind === 'select' && hasSecenekGrupDropdown(question) && !useManualEntry
   const questionLabel = getSurveyFillQuestionLabel(question)
   const answerHint = question.cevapGirdiTipAdi
     ? getFriendlyAnswerTypeLabel(question.cevapGirdiTipAdi)
@@ -250,16 +304,17 @@ export function SurveyFillQuestionField({
               fieldId,
               value,
               error,
-              disabled,
+              disabled: disabled || (kind === 'multiSelect' && selectLoading),
               onChange,
               ekiciOptions,
               ekiciLoading,
               label: kind === 'ekici' ? undefined : 'Cevap',
+              selectOptions,
             })}
           </>
         )}
 
-        {kind === 'checkbox' && error && (
+        {(kind === 'checkbox' || kind === 'multiSelect') && error && (
           <p className="mt-1.5 text-xs text-red-600" role="alert">
             {error}
           </p>
@@ -267,6 +322,7 @@ export function SurveyFillQuestionField({
 
         {answerHint &&
           kind !== 'checkbox' &&
+          kind !== 'multiSelect' &&
           kind !== 'ekici' &&
           !showSecenekDropdown && (
             <p className="mt-1.5 text-xs text-muted">{answerHint}</p>

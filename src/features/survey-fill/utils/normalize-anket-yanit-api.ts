@@ -58,23 +58,36 @@ function readCevapTextFromFields(cevap: Record<string, unknown>): string | null 
   return null
 }
 
+function readOptionalIdList(raw: unknown): number[] {
+  if (!Array.isArray(raw)) return []
+
+  return raw
+    .map((item) => Number(item))
+    .filter((id) => Number.isFinite(id) && id > 0)
+}
+
 function readCevapFields(cevapRaw: unknown) {
   const cevap = asRecord(cevapRaw)
   if (Object.keys(cevap).length === 0) {
     return {
       cevapText: null as string | null,
       cevapAltSecenekId: null as number | null,
+      cevapAltSecenekIds: [] as number[],
       ekiciId: null as string | null,
     }
   }
 
   const ekiciRaw = pick(cevap, 'ekiciId', 'EkiciId')
+  const cevapAltSecenekIds = readOptionalIdList(
+    pick(cevap, 'cevapAltSecenekIds', 'CevapAltSecenekIds'),
+  )
 
   return {
     cevapText: readCevapTextFromFields(cevap),
     cevapAltSecenekId: readOptionalPositiveId(
       pick(cevap, 'cevapAltSecenekId', 'CevapAltSecenekId'),
     ),
+    cevapAltSecenekIds,
     ekiciId: ekiciRaw != null ? String(ekiciRaw) : null,
   }
 }
@@ -224,6 +237,10 @@ export function mapAnketYanitSoruFromApi(
     cevapAltSecenekId:
       cevapFields.cevapAltSecenekId ??
       readOptionalPositiveId(pick(row, 'cevapAltSecenekId', 'CevapAltSecenekId')),
+    cevapAltSecenekIds:
+      cevapFields.cevapAltSecenekIds.length > 0
+        ? cevapFields.cevapAltSecenekIds
+        : readOptionalIdList(pick(row, 'cevapAltSecenekIds', 'CevapAltSecenekIds')),
     ekiciId:
       cevapFields.ekiciId ??
       (pick(row, 'ekiciId', 'EkiciId') != null ? String(pick(row, 'ekiciId', 'EkiciId')) : null),
@@ -261,6 +278,7 @@ function mapYanitlanmayanSoruFromApi(raw: unknown): AnketYanitSoruDto | null {
     yanitlandi: false,
     cevapText: null,
     cevapAltSecenekId: null,
+    cevapAltSecenekIds: [],
     ekiciId: null,
   }
 }

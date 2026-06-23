@@ -139,12 +139,24 @@ export function SurveyFillForm({
     return [...ids]
   }, [enrichedQuestions])
 
+  const altSecenekIdsBySoruId = useMemo(() => {
+    const map: Record<number, number[]> = {}
+    for (const question of questionDefinitionsQuery.data ?? []) {
+      const soruId = Number(question.id)
+      if (!Number.isFinite(soruId) || soruId <= 0) continue
+      if (!question.altSecenekIds?.length) continue
+      map[soruId] = question.altSecenekIds
+    }
+    return map
+  }, [questionDefinitionsQuery.data])
+
   const altSeceneklerQuery = useAltSeceneklerByGrupIds(secenekGrupIds)
 
   const visibleQuestions = useMemo(() => {
     const merged = mergeAltSeceneklerIntoQuestions(
       enrichedQuestions,
       altSeceneklerQuery.optionsByGrupId,
+      altSecenekIdsBySoruId,
     )
     return filterVisibleQuestionsForFill(
       merged,
@@ -152,7 +164,14 @@ export function SurveyFillForm({
       answerTypeLookup,
       manualEntryByKey,
     )
-  }, [enrichedQuestions, altSeceneklerQuery.optionsByGrupId, answers, answerTypeLookup, manualEntryByKey])
+  }, [
+    enrichedQuestions,
+    altSeceneklerQuery.optionsByGrupId,
+    altSecenekIdsBySoruId,
+    answers,
+    answerTypeLookup,
+    manualEntryByKey,
+  ])
 
   const progress = useMemo(
     () => getFormFillProgress(visibleQuestions, answers, answerTypeLookup, manualEntryByKey),

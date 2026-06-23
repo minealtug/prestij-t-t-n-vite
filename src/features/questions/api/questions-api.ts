@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/api/api-client'
+import { mapQuestionFromApi, mapQuestionsFromApi } from '../utils/normalize-question-api'
 import type {
   CevapGirdiTipDto,
   CreateLinkedQuestionWithMigrateRequest,
@@ -12,16 +13,18 @@ import type {
 } from '../types/question.types'
 
 export const questionsApi = {
-  getAll: () => apiClient.get<QuestionDto[]>('/api/AnketSoru'),
-  getByBaslikId: (baslikId: number) =>
-    apiClient.get<QuestionDto[]>('/api/AnketSoru', { baslikId }),
+  getAll: async () => mapQuestionsFromApi(await apiClient.get<unknown[]>('/api/AnketSoru')),
+  getByBaslikId: async (baslikId: number) =>
+    mapQuestionsFromApi(await apiClient.get<unknown[]>('/api/AnketSoru', { baslikId })),
   getAnswerInputTypes: () => apiClient.get<CevapGirdiTipDto[]>('/api/AnketCevapGirdiTip'),
 
-  create: (payload: CreateQuestionRequest) =>
-    apiClient.post<QuestionDto>('/api/AnketSoru', payload),
+  create: async (payload: CreateQuestionRequest) =>
+    mapQuestionFromApi(await apiClient.post<unknown>('/api/AnketSoru', payload)),
 
-  createNewLinked: (parentId: string | number, payload: CreateNewLinkedQuestionRequest) =>
-    apiClient.post<QuestionDto>(`/api/AnketSoru/${parentId}/bagli-sorular/yeni`, payload),
+  createNewLinked: async (parentId: string | number, payload: CreateNewLinkedQuestionRequest) =>
+    mapQuestionFromApi(
+      await apiClient.post<unknown>(`/api/AnketSoru/${parentId}/bagli-sorular/yeni`, payload),
+    ),
 
   linkExisting: (parentId: string | number, payload: LinkExistingQuestionRequest) =>
     apiClient.post<QuestionConnectionDto>(
@@ -32,8 +35,8 @@ export const questionsApi = {
   migrateAndAddLinked: (payload: CreateLinkedQuestionWithMigrateRequest) =>
     apiClient.post<LinkedQuestionMigrateResultDto>('/api/AnketSoruBaglanti/migrate-and-add-linked', payload),
 
-  update: (id: string | number, payload: Record<string, unknown>) =>
-    apiClient.put<QuestionDto>(`/api/AnketSoru/${id}`, payload),
+  update: async (id: string | number, payload: Record<string, unknown>) =>
+    mapQuestionFromApi(await apiClient.put<unknown>(`/api/AnketSoru/${id}`, payload)),
 
   setActive: (id: string | number, aktif: boolean) =>
     apiClient.patch<QuestionDto>(`/api/AnketSoru/${id}/aktif?aktif=${aktif}`),

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Select } from '@/components/ui/Select'
 import { useAltSeceneklerByGrupId } from '../hooks/use-alt-secenekler-by-grup'
 import { buildAltSecenekOptionsFromQuery } from '../utils/build-alt-secenek-options'
@@ -10,6 +10,7 @@ import {
 
 interface AltSecenekSelectProps {
   secenekGrupId?: number
+  allowedAltSecenekIds?: number[]
   value: string
   onChange: (value: string) => void
   label?: string
@@ -20,6 +21,7 @@ interface AltSecenekSelectProps {
 
 export function AltSecenekSelect({
   secenekGrupId,
+  allowedAltSecenekIds,
   value,
   onChange,
   label = ALT_SECENEK_LABEL,
@@ -30,10 +32,17 @@ export function AltSecenekSelect({
   const parsedGrupId =
     Number.isFinite(secenekGrupId) && (secenekGrupId ?? 0) > 0 ? secenekGrupId : undefined
   const query = useAltSeceneklerByGrupId(parsedGrupId)
+  const filteredData = useMemo(() => {
+    const items = query.data ?? []
+    if (!allowedAltSecenekIds?.length) return items
+    const allowed = new Set(allowedAltSecenekIds)
+    return items.filter((item) => allowed.has(item.id))
+  }, [allowedAltSecenekIds, query.data])
+
   const options =
     query.isLoading || query.isFetching
       ? [{ value: '', label: ALT_SECENEK_LOADING }]
-      : buildAltSecenekOptionsFromQuery(query.data ?? [], parsedGrupId)
+      : buildAltSecenekOptionsFromQuery(filteredData, parsedGrupId)
 
   useEffect(() => {
     if (!value || !parsedGrupId || query.isLoading || query.isFetching) return

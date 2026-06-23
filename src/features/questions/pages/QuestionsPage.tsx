@@ -24,6 +24,8 @@ import {
   normalizeBagliKosulTipi,
 } from '../utils/bagli-kosul-tipi'
 import { GORUNME_KOSULU_LABEL } from '../utils/question-field-labels'
+import { AltSecenekMultiSelect } from '../components/AltSecenekMultiSelect'
+import { needsSecenekGrup } from '../utils/needs-secenek-grup'
 import type { QuestionDto } from '../types/question.types'
 import { resolveCevapGirdiTipId } from '../utils/resolve-question-cevap-girdi-tip'
 import { resolveQuestionBirimId } from '../utils/resolve-question-birim-adi'
@@ -35,6 +37,7 @@ function buildQuestionUpdatePayload(
     aktif: boolean
     zorunlu: boolean
     anketCevapBirimId: string
+    altSecenekIds: number[]
   },
 ): Record<string, unknown> | null {
   const cevapGirdiTipId = resolveCevapGirdiTipId(question)
@@ -57,6 +60,9 @@ function buildQuestionUpdatePayload(
 
   if (question.secenekGrupId != null && question.secenekGrupId > 0) {
     payload.secenekGrupId = question.secenekGrupId
+    if (question.kaynak === 'AppDb') {
+      payload.altSecenekIds = values.altSecenekIds
+    }
   }
 
   const parsedAnketCevapBirimId = Number(values.anketCevapBirimId)
@@ -83,6 +89,7 @@ export function QuestionsPage() {
   const [editAktif, setEditAktif] = useState(true)
   const [editZorunlu, setEditZorunlu] = useState(false)
   const [editAnketCevapBirimId, setEditAnketCevapBirimId] = useState('')
+  const [editAltSecenekIds, setEditAltSecenekIds] = useState<number[]>([])
   const [editBagliKosulTipi, setEditBagliKosulTipi] = useState(BAGLI_KOSUL_ESIT)
   const [editSaveError, setEditSaveError] = useState('')
   const [deleteError, setDeleteError] = useState<{ message: string; questionText: string } | null>(
@@ -127,6 +134,7 @@ export function QuestionsPage() {
     setEditZorunlu(question.zorunlu)
     const birimId = resolveQuestionBirimId(question)
     setEditAnketCevapBirimId(birimId != null ? String(birimId) : '')
+    setEditAltSecenekIds(question.altSecenekIds ?? [])
     setEditBagliKosulTipi(normalizeBagliKosulTipi(question.bagliKosulTipi))
     setEditSaveError('')
   }
@@ -137,6 +145,7 @@ export function QuestionsPage() {
     setEditAktif(true)
     setEditZorunlu(false)
     setEditAnketCevapBirimId('')
+    setEditAltSecenekIds([])
     setEditBagliKosulTipi(BAGLI_KOSUL_ESIT)
     setEditSaveError('')
   }
@@ -149,7 +158,11 @@ export function QuestionsPage() {
     const zorunluChanged = editZorunlu !== editingQuestion.zorunlu
     const originalBirimId = resolveQuestionBirimId(editingQuestion)
     const birimChanged = editAnketCevapBirimId !== (originalBirimId != null ? String(originalBirimId) : '')
-    const questionContentChanged = textChanged || zorunluChanged || birimChanged
+    const altSecenekIdsChanged =
+      editingQuestion.kaynak === 'AppDb' &&
+      JSON.stringify(editAltSecenekIds) !== JSON.stringify(editingQuestion.altSecenekIds ?? [])
+    const questionContentChanged =
+      textChanged || zorunluChanged || birimChanged || altSecenekIdsChanged
     const kosulChanged =
       editingQuestion.bagliSoru &&
       normalizeBagliKosulTipi(editBagliKosulTipi) !==
@@ -169,6 +182,7 @@ export function QuestionsPage() {
           aktif: editAktif,
           zorunlu: editZorunlu,
           anketCevapBirimId: editAnketCevapBirimId,
+          altSecenekIds: editAltSecenekIds,
         })
         if (!payload) {
           setEditSaveError('Cevap tipi bilgisi eksik; soru güncellenemedi.')
@@ -359,11 +373,22 @@ export function QuestionsPage() {
             disabled={answerUnitsQuery.isLoading}
           />
 
+          {editingQuestion?.kaynak === 'AppDb' &&
+          editingQuestion.secenekGrupId != null &&
+          editingQuestion.secenekGrupId > 0 &&
+          needsSecenekGrup(editingQuestion.cevapGirdiTipAdi ?? '') ? (
+            <AltSecenekMultiSelect
+              secenekGrupId={editingQuestion.secenekGrupId}
+              value={editAltSecenekIds}
+              onChange={setEditAltSecenekIds}
+            />
+          ) : null}
+
           {editingQuestion?.bagliSoru && (
             <Select
               label={GORUNME_KOSULU_LABEL}
               value={editBagliKosulTipi}
-              onChange={(e) => setEditBagliKosulTipi(e.target.value)}
+              onChange={(e) => setEditBagliKosulTipi(normalizeBagliKosulTipi(e.target.value))}
               options={BAGLI_KOSUL_TIPI_OPTIONS.map((option) => ({
                 key: option.value,
                 value: option.value,

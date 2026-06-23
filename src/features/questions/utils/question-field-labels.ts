@@ -1,5 +1,5 @@
 import type { BagliKosulTipi } from './bagli-kosul-tipi'
-import { BAGLI_KOSUL_BUYUK_ESIT, BAGLI_KOSUL_ESIT } from './bagli-kosul-tipi'
+import { BAGLI_KOSUL_BUYUK_ESIT } from './bagli-kosul-tipi'
 
 export const SECENEK_GRUP_LABEL = 'Cevap seçenekleri'
 export const SECENEK_GRUP_LINKED_LABEL = 'Bu sorunun cevap seçenekleri'
@@ -13,6 +13,11 @@ export const GORUNME_KOSULU_TABLE_HEADER = 'GÖRÜNME KOŞULU'
 export const ALT_SECENEK_LABEL = 'Cevap seçeneği'
 export const ALT_SECENEK_LOADING = 'Seçenekler yükleniyor...'
 export const ALT_SECENEK_NEED_SECENEK_GRUP = 'Önce cevap seçenekleri listesini seçin'
+
+export const GOSTERILECEK_SECENEKLER_LABEL = 'Anket doldurmada gösterilecek seçenekler'
+export const GOSTERILECEK_SECENEKLER_LOADING = 'Seçenekler yükleniyor...'
+export const GOSTERILECEK_SECENEKLER_NEED_GRUP = 'Önce cevap seçenekleri listesini seçin'
+export const GOSTERILECEK_SECENEKLER_EMPTY = 'Bu gruba ait alt seçenek bulunamadı'
 
 export function getBagliSoruTriggerLabel(parentSecenekGrupLabel?: string): string {
   const trimmed = parentSecenekGrupLabel?.trim()

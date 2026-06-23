@@ -23,6 +23,7 @@ export function buildAnketYanitCevapBatchRequest(
       cevapNumeric: payload.cevapNumeric ?? null,
       cevapDatetime: payload.cevapDatetime ?? null,
       cevapAltSecenekId: payload.cevapAltSecenekId ?? null,
+      cevapAltSecenekIds: payload.cevapAltSecenekIds ?? null,
       birimId: payload.birimId ?? null,
     })),
   }

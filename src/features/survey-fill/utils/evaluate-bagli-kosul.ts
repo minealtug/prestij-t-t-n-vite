@@ -33,6 +33,36 @@ export function isBagliKosulMatched(
   if (bagliAltSecenekId == null || bagliAltSecenekId <= 0) return true
   if (parentCevapAltSecenekId == null || parentCevapAltSecenekId <= 0) return false
 
+  return isBagliKosulMatchedForId(
+    parentCevapAltSecenekId,
+    bagliAltSecenekId,
+    bagliKosulTipi,
+    parentOptions,
+  )
+}
+
+export function isBagliKosulMatchedForAny(
+  parentCevapAltSecenekIds: number[] | null | undefined,
+  bagliAltSecenekId: number | null | undefined,
+  bagliKosulTipi: unknown,
+  parentOptions: AltSecenekOptionDto[] = [],
+): boolean {
+  if (bagliAltSecenekId == null || bagliAltSecenekId <= 0) return true
+
+  const ids = parentCevapAltSecenekIds?.filter((id) => id > 0) ?? []
+  if (ids.length === 0) return false
+
+  return ids.some((parentId) =>
+    isBagliKosulMatchedForId(parentId, bagliAltSecenekId, bagliKosulTipi, parentOptions),
+  )
+}
+
+function isBagliKosulMatchedForId(
+  parentCevapAltSecenekId: number,
+  bagliAltSecenekId: number,
+  bagliKosulTipi: unknown,
+  parentOptions: AltSecenekOptionDto[],
+): boolean {
   const kosul = normalizeBagliKosulTipi(bagliKosulTipi)
   if (!isBuyukEsitKosul(kosul)) {
     return parentCevapAltSecenekId === bagliAltSecenekId

@@ -59,16 +59,36 @@ export function enrichOturumQuestionsWithDefinitions(
 export function mergeAltSeceneklerIntoQuestions(
   questions: AnketYanitSoruDto[],
   optionsByGrupId: Record<number, AltSecenekOptionDto[]>,
+  altSecenekIdsBySoruId?: Record<number, number[]>,
 ): AnketYanitSoruDto[] {
   return questions.map((soru) => {
+    if (soru.altSecenekler.length > 0) {
+      return soru
+    }
+
     const fromGrup =
       soru.secenekGrupId != null ? optionsByGrupId[soru.secenekGrupId] ?? [] : []
-    const altSecenekler =
-      soru.altSecenekler.length > 0
-        ? soru.altSecenekler
-        : fromGrup
+    const selectedIds = altSecenekIdsBySoruId?.[soru.soruId]
 
-    if (altSecenekler === soru.altSecenekler) return soru
-    return { ...soru, altSecenekler }
+    if (selectedIds?.length) {
+      const byId = new Map(fromGrup.map((item) => [item.id, item]))
+      const filtered: AltSecenekOptionDto[] = []
+
+      selectedIds.forEach((id, index) => {
+        const item = byId.get(id)
+        if (!item) return
+        filtered.push({
+          id: item.id,
+          adi: item.adi,
+          siraNo: index + 1,
+        })
+      })
+
+      if (filtered.length > 0) {
+        return { ...soru, altSecenekler: filtered }
+      }
+    }
+
+    return { ...soru, altSecenekler: fromGrup }
   })
 }

@@ -18,6 +18,7 @@ export interface QuestionDto {
   zorunlu: boolean
   aktif: boolean
   secenekGrupId: number | null
+  altSecenekIds?: number[]
   bagliSoru: boolean
   bagliOlduguSoruId?: number | null
   bagliAltSecenekId?: number | null
@@ -43,6 +44,7 @@ export interface CreateLinkedQuestionPayload {
   zorunlu: boolean
   aktif: boolean
   secenekGrupId?: number
+  altSecenekIds?: number[]
   anketCevapBirimId?: number
   bagliAltSecenekId?: number
   bagliKosulTipi?: string
@@ -57,6 +59,7 @@ export interface CreateQuestionRequest {
   zorunlu: boolean
   aktif: boolean
   secenekGrupId?: number
+  altSecenekIds?: number[]
   anketCevapBirimId?: number
   bagliSoru: boolean
   bagliSorular?: CreateLinkedQuestionPayload[]
@@ -70,6 +73,7 @@ export interface CreateNewLinkedQuestionRequest {
   zorunlu: boolean
   aktif: boolean
   secenekGrupId?: number
+  altSecenekIds?: number[]
   anketCevapBirimId?: number
   bagliAltSecenekId?: number
   bagliKosulTipi?: string

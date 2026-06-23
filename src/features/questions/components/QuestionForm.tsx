@@ -34,8 +34,9 @@ import {
   getBagliSoruTriggerLabel,
   getBagliSoruVisibilityHint,
 } from '../utils/question-field-labels'
-import { clearLinkedChildTriggers } from '../utils/clear-linked-child-triggers'
+import { clearLinkedChildTriggers, clearLinkedChildAltSecenekIds } from '../utils/clear-linked-child-triggers'
 import { AltSecenekSelect } from './AltSecenekSelect'
+import { AltSecenekMultiSelect } from './AltSecenekMultiSelect'
 import {
   LinkedChildEditor,
   type LinkedChildDraft,
@@ -68,6 +69,7 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
   const answerUnitsQuery = useAnswerUnits()
   const secenekGruplariQuery = useSecenekGruplari()
   const [form, setForm] = useState(defaultForm)
+  const [altSecenekIds, setAltSecenekIds] = useState<number[]>([])
   const [linkedMode, setLinkedMode] = useState<LinkedMode>('yeni')
   const [parentQuestionId, setParentQuestionId] = useState('')
   const [existingLinkedQuestionId, setExistingLinkedQuestionId] = useState('')
@@ -154,6 +156,10 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
   )
 
   const parentSecenekGrupId = selectedParentQuestion?.secenekGrupId ?? undefined
+  const parentAltSecenekIds = useMemo(() => {
+    const ids = selectedParentQuestion?.altSecenekIds ?? []
+    return ids.length > 0 ? ids : undefined
+  }, [selectedParentQuestion?.altSecenekIds])
 
   const questionOptions = useMemo(
     () =>
@@ -182,6 +188,7 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
 
   const resetForm = () => {
     setForm(defaultForm)
+    setAltSecenekIds([])
     setLinkedMode('yeni')
     setParentQuestionId('')
     setExistingLinkedQuestionId('')
@@ -199,6 +206,7 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
     aktif: boolean,
     anketCevapBirimId?: number,
     secenekGrupId?: number,
+    selectedAltSecenekIds?: number[],
   ): Omit<CreateQuestionRequest, 'bagliSoru' | 'bagliSorular'> => ({
     baslikId,
     cevapGirdiTipId,
@@ -206,7 +214,9 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
     zorunlu,
     aktif,
     ...(anketCevapBirimId != null && anketCevapBirimId > 0 ? { anketCevapBirimId } : {}),
-    ...(secenekGrupId != null && secenekGrupId > 0 ? { secenekGrupId } : {}),
+    ...(secenekGrupId != null && secenekGrupId > 0
+      ? { secenekGrupId, altSecenekIds: selectedAltSecenekIds ?? [] }
+      : {}),
   })
 
   const mapLinkedChildrenFromDrafts = (
@@ -291,11 +301,6 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
     const secenekGrupId =
       Number.isFinite(parsedSecenekGrupId) && parsedSecenekGrupId > 0 ? parsedSecenekGrupId : undefined
 
-    if (showSecenekGrup && !secenekGrupId) {
-      setFormError('Seçenekli cevap tipleri için seçenek grubu seçmelisiniz.')
-      return
-    }
-
     const questionFields = buildQuestionFields(
       baslikId,
       cevapGirdiTipId,
@@ -304,6 +309,7 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
       form.aktif,
       anketCevapBirimId,
       secenekGrupId,
+      altSecenekIds,
     )
 
     const parsedBagliAltSecenekId = Number(bagliAltSecenekId)
@@ -394,6 +400,7 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
     idPrefix = '',
     trigger?: {
       secenekGrupId?: number
+      allowedAltSecenekIds?: number[]
       value: string
       onChange: (value: string) => void
     },
@@ -405,6 +412,7 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
             key={`trigger-${idPrefix}-${trigger.secenekGrupId ?? 'none'}`}
             id={`${idPrefix}trigger`}
             secenekGrupId={trigger.secenekGrupId}
+            allowedAltSecenekIds={trigger.allowedAltSecenekIds}
             label={getBagliSoruTriggerLabel(
               trigger.secenekGrupId
                 ? getSecenekGrupLabel(trigger.secenekGrupId) ?? undefined
@@ -420,7 +428,7 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
               <Select
                 label={GORUNME_KOSULU_LABEL}
                 value={bagliKosulTipi}
-                onChange={(e) => setBagliKosulTipi(e.target.value)}
+                onChange={(e) => setBagliKosulTipi(normalizeBagliKosulTipi(e.target.value))}
                 options={BAGLI_KOSUL_TIPI_OPTIONS}
               />
               <p className="text-xs text-muted">
@@ -446,13 +454,14 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
         <Select
           label="Cevap Tipi"
           value={form.cevapGirdiTipId}
-          onChange={(e) =>
+          onChange={(e) => {
             setForm((f) => ({
               ...f,
               cevapGirdiTipId: e.target.value,
               secenekGrupId: '',
             }))
-          }
+            setAltSecenekIds([])
+          }}
           options={cevapTipiOptions}
           disabled={answerInputTypesQuery.isLoading}
           required
@@ -466,13 +475,26 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
               ...f,
               secenekGrupId: e.target.value,
             }))
-            setLinkedChildren((items) => clearLinkedChildTriggers(items))
+            setAltSecenekIds([])
+            setLinkedChildren((items) => clearLinkedChildAltSecenekIds(items))
           }}
           options={secenekGrupOptions}
           disabled={secenekGruplariQuery.isLoading}
-          required={showSecenekGrup}
         />
       </div>
+
+      {showSecenekGrup && form.secenekGrupId ? (
+        <AltSecenekMultiSelect
+          id={`${idPrefix}alt-secenekler`}
+          secenekGrupId={Number(form.secenekGrupId)}
+          value={altSecenekIds}
+          onChange={(nextIds) => {
+            setAltSecenekIds(nextIds)
+            setLinkedChildren((items) => clearLinkedChildTriggers(items))
+          }}
+          disabled={secenekGruplariQuery.isLoading}
+        />
+      ) : null}
 
       <Select
         label="Birim"
@@ -508,7 +530,10 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
     </div>
   )
 
-  const renderLinkedChildrenSection = (parentSecenekGrupId?: number) => (
+  const renderLinkedChildrenSection = (
+    parentSecenekGrupId?: number,
+    parentAltSecenekIdsForChildren?: number[],
+  ) => (
     <div className="space-y-4 rounded-lg border border-border bg-muted/10 p-4">
       <div>
         <h4 className="text-sm font-medium text-foreground">Bağlı Sorular (isteğe bağlı)</h4>
@@ -522,6 +547,7 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
         children={linkedChildren}
         onChange={setLinkedChildren}
         parentSecenekGrupId={parentSecenekGrupId}
+        parentAltSecenekIds={parentAltSecenekIdsForChildren}
         readOnly={readOnly}
         cevapTipiOptions={cevapTipiOptions}
         secenekGrupOptions={secenekGrupOptions}
@@ -562,6 +588,7 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
             Number.isFinite(selectedSecenekGrupId) && selectedSecenekGrupId > 0
               ? selectedSecenekGrupId
               : undefined,
+            altSecenekIds.length > 0 ? altSecenekIds : undefined,
           )
         )}
 
@@ -646,6 +673,7 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
                   key={`link-existing-trigger-${parentSecenekGrupId ?? 'none'}`}
                   id="link-existing-trigger"
                   secenekGrupId={parentSecenekGrupId}
+                  allowedAltSecenekIds={parentAltSecenekIds}
                   label={getBagliSoruTriggerLabel(
                     parentSecenekGrupId
                       ? getSecenekGrupLabel(parentSecenekGrupId) ?? undefined
@@ -661,7 +689,7 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
                     <Select
                       label={GORUNME_KOSULU_LABEL}
                       value={bagliKosulTipi}
-                      onChange={(e) => setBagliKosulTipi(e.target.value)}
+                      onChange={(e) => setBagliKosulTipi(normalizeBagliKosulTipi(e.target.value))}
                       options={BAGLI_KOSUL_TIPI_OPTIONS}
                     />
                     <p className="text-xs text-muted">
@@ -692,6 +720,7 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
                 <h4 className="text-sm font-medium text-foreground">Yeni Bağlı Soru Bilgileri</h4>
                 {renderQuestionFields('linked-', {
                   secenekGrupId: parentSecenekGrupId,
+                  allowedAltSecenekIds: parentAltSecenekIds,
                   value: bagliAltSecenekId,
                   onChange: setBagliAltSecenekId,
                 })}
@@ -699,6 +728,7 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
                   Number.isFinite(selectedSecenekGrupId) && selectedSecenekGrupId > 0
                     ? selectedSecenekGrupId
                     : undefined,
+                  altSecenekIds.length > 0 ? altSecenekIds : undefined,
                 )}
               </div>
             )}

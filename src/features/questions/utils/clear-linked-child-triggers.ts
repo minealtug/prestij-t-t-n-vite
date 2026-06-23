@@ -7,3 +7,12 @@ export function clearLinkedChildTriggers(items: LinkedChildDraft[]): LinkedChild
     children: clearLinkedChildTriggers(item.children),
   }))
 }
+
+export function clearLinkedChildAltSecenekIds(items: LinkedChildDraft[]): LinkedChildDraft[] {
+  return items.map((item) => ({
+    ...item,
+    altSecenekIds: [],
+    bagliAltSecenekId: '',
+    children: clearLinkedChildAltSecenekIds(item.children),
+  }))
+}

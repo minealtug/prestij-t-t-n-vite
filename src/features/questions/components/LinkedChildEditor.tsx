@@ -12,11 +12,13 @@ import {
   getBagliSoruVisibilityHint,
 } from '../utils/question-field-labels'
 import { AltSecenekSelect } from './AltSecenekSelect'
+import { AltSecenekMultiSelect } from './AltSecenekMultiSelect'
 
 export interface LinkedChildDraft {
   key: string
   cevapGirdiTipId: string
   secenekGrupId: string
+  altSecenekIds: number[]
   bagliAltSecenekId: string
   bagliKosulTipi: string
   anketCevapBirimId: string
@@ -34,6 +36,7 @@ export function createLinkedChildDraft(): LinkedChildDraft {
     key: `linked-child-${linkedChildKey}`,
     cevapGirdiTipId: '',
     secenekGrupId: '',
+    altSecenekIds: [],
     bagliAltSecenekId: '',
     bagliKosulTipi: BAGLI_KOSUL_ESIT,
     anketCevapBirimId: '',
@@ -48,6 +51,7 @@ interface LinkedChildEditorProps {
   children: LinkedChildDraft[]
   onChange: (children: LinkedChildDraft[]) => void
   parentSecenekGrupId?: number
+  parentAltSecenekIds?: number[]
   depth?: number
   readOnly?: boolean
   cevapTipiOptions: { value: string; label: string }[]
@@ -103,6 +107,7 @@ export function LinkedChildEditor({
   children,
   onChange,
   parentSecenekGrupId,
+  parentAltSecenekIds,
   depth = 0,
   readOnly = false,
   cevapTipiOptions,
@@ -176,6 +181,7 @@ export function LinkedChildEditor({
                   key={`trigger-${child.key}-${parentSecenekGrupId ?? 'none'}`}
                   id={`trigger-${child.key}`}
                   secenekGrupId={parentSecenekGrupId}
+                  allowedAltSecenekIds={parentAltSecenekIds}
                   label={triggerLabel}
                   value={child.bagliAltSecenekId}
                   onChange={(nextValue) =>
@@ -224,6 +230,7 @@ export function LinkedChildEditor({
                     ...item,
                     cevapGirdiTipId: e.target.value,
                     secenekGrupId: '',
+                    altSecenekIds: [],
                     children: clearNestedTriggers(item.children),
                   }))
                 }
@@ -239,14 +246,31 @@ export function LinkedChildEditor({
                   updateChildField(child.key, (item) => ({
                     ...item,
                     secenekGrupId: e.target.value,
+                    altSecenekIds: [],
                     children: clearNestedTriggers(item.children),
                   }))
                 }
                 options={secenekGrupOptions}
                 disabled={secenekGruplariLoading}
-                required={showSecenekGrup}
+                disabled={secenekGruplariLoading}
               />
             </div>
+
+            {showSecenekGrup && child.secenekGrupId ? (
+              <AltSecenekMultiSelect
+                id={`child-alt-${child.key}`}
+                secenekGrupId={Number(child.secenekGrupId)}
+                value={child.altSecenekIds}
+                onChange={(nextIds) =>
+                  updateChildField(child.key, (item) => ({
+                    ...item,
+                    altSecenekIds: nextIds,
+                    children: clearNestedTriggers(item.children),
+                  }))
+                }
+                disabled={secenekGruplariLoading}
+              />
+            ) : null}
 
             <Select
               label="Birim"
@@ -326,6 +350,9 @@ export function LinkedChildEditor({
                       Number.isFinite(Number(child.secenekGrupId)) && Number(child.secenekGrupId) > 0
                         ? Number(child.secenekGrupId)
                         : undefined
+                    }
+                    parentAltSecenekIds={
+                      child.altSecenekIds.length > 0 ? child.altSecenekIds : undefined
                     }
                     depth={depth + 1}
                     readOnly={readOnly}

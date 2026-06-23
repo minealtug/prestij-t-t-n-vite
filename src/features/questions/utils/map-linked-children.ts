@@ -1,7 +1,6 @@
 import type { LinkedChildDraft } from '../components/LinkedChildEditor'
 import type { CreateLinkedQuestionPayload } from '../types/question.types'
 import { BAGLI_KOSUL_ESIT, normalizeBagliKosulTipi } from './bagli-kosul-tipi'
-import { needsSecenekGrup } from './needs-secenek-grup'
 
 type AnswerInputType = { id: number; adi: string }
 
@@ -53,12 +52,6 @@ function mapLinkedChild(
     return null
   }
 
-  const answerType = answerInputTypes.find((item) => item.id === cevapGirdiTipId)
-  if (answerType && needsSecenekGrup(answerType.adi) && !secenekGrupId) {
-    setError('Bağlı sorular için seçenek grubu seçmelisiniz.')
-    return null
-  }
-
   if (parentSecenekGrupId && !bagliAltSecenekId) {
       setError(
         `"${soruMetni}" için üst sorunun cevap seçeneklerinden hangi cevabın bu soruyu açacağını seçmelisiniz.`,
@@ -78,7 +71,7 @@ function mapLinkedChild(
     soruMetni,
     zorunlu: child.zorunlu,
     aktif: child.aktif,
-    ...(secenekGrupId ? { secenekGrupId } : {}),
+    ...(secenekGrupId ? { secenekGrupId, altSecenekIds: child.altSecenekIds } : {}),
     ...(anketCevapBirimId ? { anketCevapBirimId } : {}),
     ...(bagliAltSecenekId ? { bagliAltSecenekId } : {}),
     ...(child.bagliKosulTipi

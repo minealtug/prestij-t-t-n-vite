@@ -1,7 +1,8 @@
 import type { AnketYanitSoruDto } from '../types/anket-yanit.types'
 import type { AnswerTypeKindLookup } from './build-answer-type-kind-lookup'
-import { isBagliKosulMatched } from './evaluate-bagli-kosul'
+import { isBagliKosulMatchedForAny } from './evaluate-bagli-kosul'
 import { getQuestionKey } from './question-key'
+import { parseMultiSelectValue } from './multi-select-value'
 import { resolveEffectiveQuestionInputKind } from './resolve-question-input-kind'
 import { sortQuestionsUnderParents } from './sort-survey-fill-questions'
 
@@ -14,6 +15,7 @@ function isFormValueAnswered(
   const kind = resolveEffectiveQuestionInputKind(question, answerTypeLookup, useManualEntry)
 
   if (kind === 'checkbox') return value === 'true'
+  if (kind === 'multiSelect') return parseMultiSelectValue(value).length > 0
   if (kind === 'select') {
     const optionId = Number(value)
     return Number.isFinite(optionId) && optionId > 0
@@ -23,38 +25,49 @@ function isFormValueAnswered(
   return value.trim().length > 0
 }
 
-function readFormCevapAltSecenekId(
+function readFormCevapAltSecenekIds(
   question: AnketYanitSoruDto,
   value: string,
   answerTypeLookup?: AnswerTypeKindLookup,
   useManualEntry = false,
-): number | null {
+): number[] {
   const kind = resolveEffectiveQuestionInputKind(question, answerTypeLookup, useManualEntry)
-  if (kind !== 'select' || useManualEntry) return null
+
+  if (kind === 'multiSelect') {
+    return parseMultiSelectValue(value)
+  }
+
+  if (kind !== 'select' || useManualEntry) return []
 
   const optionId = Number(value)
-  return Number.isFinite(optionId) && optionId > 0 ? optionId : null
+  return Number.isFinite(optionId) && optionId > 0 ? [optionId] : []
 }
 
-function readParentCevapAltSecenekId(
+function readParentCevapAltSecenekIds(
   parent: AnketYanitSoruDto,
   answers: Record<string, string>,
   answerTypeLookup?: AnswerTypeKindLookup,
   manualEntryByKey: Record<string, boolean> = {},
-): number | null | undefined {
+): number[] | undefined {
   const parentKey = getQuestionKey(parent)
   const parentValue = answers[parentKey] ?? ''
   const parentManual = manualEntryByKey[parentKey] ?? false
 
   if (isFormValueAnswered(parent, parentValue, answerTypeLookup, parentManual)) {
-    return readFormCevapAltSecenekId(parent, parentValue, answerTypeLookup, parentManual)
+    return readFormCevapAltSecenekIds(parent, parentValue, answerTypeLookup, parentManual)
   }
 
-  if (parent.yanitlandi && parent.cevapAltSecenekId != null && parent.cevapAltSecenekId > 0) {
-    return parent.cevapAltSecenekId
+  if (!parent.yanitlandi) return undefined
+
+  if ((parent.cevapAltSecenekIds?.length ?? 0) > 0) {
+    return parent.cevapAltSecenekIds!
   }
 
-  return undefined
+  if (parent.cevapAltSecenekId != null && parent.cevapAltSecenekId > 0) {
+    return [parent.cevapAltSecenekId]
+  }
+
+  return []
 }
 
 function isParentAnswered(
@@ -74,6 +87,7 @@ function isParentAnswered(
   if (!parent.yanitlandi) return false
 
   return (
+    (parent.cevapAltSecenekIds?.length ?? 0) > 0 ||
     parent.cevapAltSecenekId != null ||
     Boolean(parent.cevapText?.trim()) ||
     Boolean(parent.ekiciId?.trim())
@@ -115,17 +129,17 @@ export function isLinkedQuestionVisible(
     return true
   }
 
-  const parentAltSecenekId = readParentCevapAltSecenekId(
+  const parentAltSecenekIds = readParentCevapAltSecenekIds(
     parent,
     answers,
     answerTypeLookup,
     manualEntryByKey,
   )
 
-  if (parentAltSecenekId === undefined) return false
+  if (parentAltSecenekIds === undefined) return false
 
-  return isBagliKosulMatched(
-    parentAltSecenekId,
+  return isBagliKosulMatchedForAny(
+    parentAltSecenekIds,
     question.bagliAltSecenekId,
     question.bagliKosulTipi,
     parent.altSecenekler ?? [],

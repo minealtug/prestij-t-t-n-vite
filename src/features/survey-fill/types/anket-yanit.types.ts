@@ -28,6 +28,7 @@ export interface AnketYanitSoruDto {
   yanitlandi: boolean
   cevapText: string | null
   cevapAltSecenekId: number | null
+  cevapAltSecenekIds?: number[]
   ekiciId: string | null
 }
 
@@ -59,6 +60,7 @@ export interface AnketYanitCevapRequest {
   cevapNumeric?: number | null
   cevapDatetime?: string | null
   cevapAltSecenekId?: number | null
+  cevapAltSecenekIds?: number[] | null
   birimId?: number | null
 }
 
@@ -76,6 +78,7 @@ export interface AnketYanitCevapBatchItem {
   cevapNumeric?: number | null
   cevapDatetime?: string | null
   cevapAltSecenekId?: number | null
+  cevapAltSecenekIds?: number[] | null
   birimId?: number | null
 }
 

@@ -3,13 +3,25 @@ import type { AnswerTypeKindLookup } from './build-answer-type-kind-lookup'
 import { isEkiciProducerQuestion } from './is-ekici-producer-question'
 import { resolveAnswerInputKind, type AnswerInputKind } from './resolve-answer-input-kind'
 
-export type QuestionInputKind = AnswerInputKind | 'ekici'
+export type QuestionInputKind = AnswerInputKind | 'ekici' | 'multiSelect'
+
+export function isMultiSelectSecenekQuestion(
+  question: SurveyFillSoruView,
+  answerTypeLookup?: AnswerTypeKindLookup,
+): boolean {
+  if (!hasSecenekGrupDropdown(question)) return false
+  return resolveBaseAnswerInputKind(question, answerTypeLookup) === 'checkbox'
+}
 
 export function resolveQuestionInputKind(
   question: SurveyFillSoruView,
   answerTypeLookup?: AnswerTypeKindLookup,
 ): QuestionInputKind {
   if (isEkiciProducerQuestion(question)) return 'ekici'
+
+  if (isMultiSelectSecenekQuestion(question, answerTypeLookup)) {
+    return 'multiSelect'
+  }
 
   if (hasSecenekGrupDropdown(question)) {
     return 'select'
