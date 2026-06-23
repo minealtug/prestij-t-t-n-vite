@@ -4,6 +4,7 @@ import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
 import type { CevapGirdiTipDto } from '../types/question.types'
 import { BAGLI_KOSUL_ESIT, BAGLI_KOSUL_TIPI_OPTIONS } from '../utils/bagli-kosul-tipi'
+import { needsSecenekGrup } from '../utils/needs-secenek-grup'
 import {
   GORUNME_KOSULU_LABEL,
   SECENEK_GRUP_LINKED_LABEL,
