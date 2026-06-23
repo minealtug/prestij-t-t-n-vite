@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { Modal } from '@/components/ui/Modal'
-import { getErrorMessage } from '@/lib/api/api-error'
+import { getFriendlyQuestionErrorMessage } from '../utils/question-error-message'
 import { QuestionForm } from '../components/QuestionForm'
 import { QuestionsTable } from '../components/QuestionsTable'
 import {
@@ -12,6 +12,7 @@ import {
   useSetQuestionActive,
   useUpdateBagliKosul,
   useUpdateQuestion,
+  useDeleteQuestion,
 } from '../hooks/use-questions'
 import { useSurveys } from '@/features/surveys/hooks/use-surveys'
 import { useAnswerUnits } from '@/features/answer-units/hooks/use-answer-units'
@@ -75,6 +76,7 @@ export function QuestionsPage() {
   const updateQuestion = useUpdateQuestion()
   const updateBagliKosul = useUpdateBagliKosul()
   const setQuestionActive = useSetQuestionActive()
+  const deleteQuestion = useDeleteQuestion()
   const [selectedSurveyId, setSelectedSurveyId] = useState(0)
   const [editingQuestion, setEditingQuestion] = useState<QuestionDto | null>(null)
   const [editText, setEditText] = useState('')
@@ -83,6 +85,9 @@ export function QuestionsPage() {
   const [editAnketCevapBirimId, setEditAnketCevapBirimId] = useState('')
   const [editBagliKosulTipi, setEditBagliKosulTipi] = useState(BAGLI_KOSUL_ESIT)
   const [editSaveError, setEditSaveError] = useState('')
+  const [deleteError, setDeleteError] = useState<{ message: string; questionText: string } | null>(
+    null,
+  )
   const questionsQuery = useQuestions(isDefinitionsPage ? selectedSurveyId : undefined)
 
   const birimOptions = useMemo(
@@ -202,10 +207,33 @@ export function QuestionsPage() {
     })
   }
 
+  const handleDelete = async (question: QuestionDto) => {
+    if (!canEdit || deleteQuestion.isPending) return
+    const preview = question.soruMetni.trim().slice(0, 80)
+    const suffix = question.soruMetni.trim().length > 80 ? '…' : ''
+    if (
+      !window.confirm(
+        `Bu soruyu silmek istediğinize emin misiniz?\n\n"${preview}${suffix}"`,
+      )
+    ) {
+      return
+    }
+
+    try {
+      await deleteQuestion.mutateAsync(question.id)
+    } catch (error) {
+      setDeleteError({
+        message: getFriendlyQuestionErrorMessage(error, 'delete'),
+        questionText: question.soruMetni.trim(),
+      })
+    }
+  }
+
   const isMutating =
     updateQuestion.isPending ||
     updateBagliKosul.isPending ||
-    setQuestionActive.isPending
+    setQuestionActive.isPending ||
+    deleteQuestion.isPending
 
   const surveySelectOptions = (surveysQuery.data ?? []).map((survey) => ({
     key: `${survey.kaynak ?? 'unknown'}-${survey.id}`,
@@ -265,6 +293,7 @@ export function QuestionsPage() {
           onRefresh={refreshQuestions}
           onEdit={canEdit ? openEditModal : undefined}
           onSetPassive={canEdit ? handleSetPassive : undefined}
+          onDelete={canEdit ? (question) => void handleDelete(question) : undefined}
           isUpdating={isMutating}
         />
       )}
@@ -345,11 +374,36 @@ export function QuestionsPage() {
           {(editSaveError || updateQuestion.isError || updateBagliKosul.isError || setQuestionActive.isError) && (
             <p className="text-sm text-red-600" role="alert">
               {editSaveError ||
-                getErrorMessage(
+                getFriendlyQuestionErrorMessage(
                   updateQuestion.error ?? updateBagliKosul.error ?? setQuestionActive.error,
+                  'update',
                 )}
             </p>
           )}
+        </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(deleteError)}
+        onClose={() => setDeleteError(null)}
+        title="Soru silinemedi"
+        description="Silme işlemi tamamlanamadı"
+        size="sm"
+        footer={
+          <div className="flex justify-end">
+            <Button onClick={() => setDeleteError(null)}>Tamam</Button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          {deleteError?.questionText ? (
+            <p className="rounded-lg bg-foreground/5 px-3 py-2 text-sm text-foreground">
+              {deleteError.questionText}
+            </p>
+          ) : null}
+          <p className="text-sm text-red-600" role="alert">
+            {deleteError?.message ?? 'Soru silinirken bir hata oluştu.'}
+          </p>
         </div>
       </Modal>
     </PageContainer>

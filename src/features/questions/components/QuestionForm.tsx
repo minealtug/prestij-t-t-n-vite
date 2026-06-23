@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Select'
 import { Textarea } from '@/components/ui/Textarea'
 import { Card } from '@/components/ui/Card'
-import { getErrorMessage } from '@/lib/api/api-error'
+import { getFriendlyQuestionErrorMessage } from '../utils/question-error-message'
 import { useSurveys } from '@/features/surveys/hooks/use-surveys'
 import { useAnswerUnits } from '@/features/answer-units/hooks/use-answer-units'
 import { useSecenekGruplari } from '../hooks/use-secenek-gruplari'
@@ -707,7 +707,7 @@ export function QuestionForm({ readOnly = false }: QuestionFormProps) {
 
         {submitError && (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-            {getErrorMessage(submitError)}
+            {getFriendlyQuestionErrorMessage(submitError, 'create')}
           </p>
         )}
         {formError && (

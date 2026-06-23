@@ -1,4 +1,4 @@
-import { Pencil, Ban } from 'lucide-react'
+import { Pencil, Ban, Trash2 } from 'lucide-react'
 import { useMemo } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Table, type TableColumn } from '@/components/ui/Table'
@@ -47,6 +47,7 @@ interface QuestionsTableProps {
   onRefresh: () => void
   onEdit?: (question: QuestionDto) => void
   onSetPassive?: (question: QuestionDto) => void
+  onDelete?: (question: QuestionDto) => void
   isUpdating: boolean
 }
 
@@ -58,6 +59,7 @@ export function QuestionsTable({
   onRefresh,
   onEdit,
   onSetPassive,
+  onDelete,
   isUpdating,
 }: QuestionsTableProps) {
   const answerUnitsQuery = useAnswerUnits()
@@ -161,12 +163,12 @@ export function QuestionsTable({
         return getBagliKosulTipiLabel(row.bagliKosulTipi)
       },
     },
-    ...(onEdit || onSetPassive
+    ...(onEdit || onSetPassive || onDelete
       ? [
           {
             key: 'actions',
             header: 'İŞLEMLER',
-            className: 'w-28',
+            className: 'w-36',
             render: (row: QuestionDto) => (
               <div className="flex gap-0.5">
                 {onEdit && (
@@ -192,6 +194,18 @@ export function QuestionsTable({
                     title={row.aktif ? 'Pasife al' : 'Zaten pasif'}
                   >
                     <Ban className="h-3.5 w-3.5 text-amber-600" />
+                  </Button>
+                )}
+                {onDelete && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="!h-7 !w-7 !p-0"
+                    aria-label="Sil"
+                    disabled={isUpdating}
+                    onClick={() => onDelete(row)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-red-600" />
                   </Button>
                 )}
               </div>
