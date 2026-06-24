@@ -1,33 +1,38 @@
 import type { AnketCevapOzetItem } from '../types/survey-response.types'
 
 export interface SurveyResponseStats {
-  kayitSayisi: number
-  yanitlananSoruSayisi: number
-  yanitlanmayanSoruSayisi: number
-  toplamSoruSayisi: number
-  tamamlanmaYuzdesi: number | null
+  toplamKayitSayisi: number
+  tamamlananAnketSayisi: number
+  tamamlanmayanAnketSayisi: number
+  tamamlanmaOrani: number | null
+}
+
+export function isAnketKaydiTamamlandi(
+  item: Pick<AnketCevapOzetItem, 'yanitlananSoruSayisi' | 'yanitlanmayanSoruSayisi'>,
+): boolean {
+  return item.yanitlanmayanSoruSayisi === 0 && item.yanitlananSoruSayisi > 0
 }
 
 export function computeSurveyResponseStats(items: AnketCevapOzetItem[]): SurveyResponseStats {
-  let yanitlananSoruSayisi = 0
-  let yanitlanmayanSoruSayisi = 0
+  const toplamKayitSayisi = items.length
+  let tamamlananAnketSayisi = 0
 
   for (const item of items) {
-    yanitlananSoruSayisi += Math.max(0, item.yanitlananSoruSayisi)
-    yanitlanmayanSoruSayisi += Math.max(0, item.yanitlanmayanSoruSayisi)
+    if (isAnketKaydiTamamlandi(item)) {
+      tamamlananAnketSayisi += 1
+    }
   }
 
-  const toplamSoruSayisi = yanitlananSoruSayisi + yanitlanmayanSoruSayisi
-  const tamamlanmaYuzdesi =
-    toplamSoruSayisi > 0
-      ? Math.round((yanitlananSoruSayisi / toplamSoruSayisi) * 100)
+  const tamamlanmayanAnketSayisi = toplamKayitSayisi - tamamlananAnketSayisi
+  const tamamlanmaOrani =
+    toplamKayitSayisi > 0
+      ? Math.round((tamamlananAnketSayisi / toplamKayitSayisi) * 100)
       : null
 
   return {
-    kayitSayisi: items.length,
-    yanitlananSoruSayisi,
-    yanitlanmayanSoruSayisi,
-    toplamSoruSayisi,
-    tamamlanmaYuzdesi,
+    toplamKayitSayisi,
+    tamamlananAnketSayisi,
+    tamamlanmayanAnketSayisi,
+    tamamlanmaOrani,
   }
 }

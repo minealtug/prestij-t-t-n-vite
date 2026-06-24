@@ -1,3 +1,4 @@
+import { resolveQuestionBirimAdi } from '@/features/questions/utils/resolve-question-birim-adi'
 import type { CevapGirdiTipDto, QuestionDto } from '@/features/questions/types/question.types'
 import { normalizeBagliKosulTipi } from '@/features/questions/utils/bagli-kosul-tipi'
 import type { AltSecenekOptionDto, AnketYanitSoruDto } from '../types/anket-yanit.types'
@@ -29,6 +30,7 @@ export function enrichOturumQuestionsWithDefinitions(
 
     return {
       ...soru,
+      zorunlu: Boolean(definition?.zorunlu ?? soru.zorunlu),
       cevapGirdiTipAdi,
       cevapGirdiTipId,
       secenekGrupId:
@@ -52,6 +54,16 @@ export function enrichOturumQuestionsWithDefinitions(
           definition?.bagliKosulTipi ??
           (definition as QuestionDto & { BagliKosulTipi?: string | null })?.BagliKosulTipi,
       ),
+      anketCevapBirimId:
+        soru.anketCevapBirimId ??
+        readPositiveId(definition?.anketCevapBirimId) ??
+        readPositiveId(
+          (definition as QuestionDto & { AnketCevapBirimId?: number | null })?.AnketCevapBirimId,
+        ) ??
+        readPositiveId(definition?.anketCevapBirim?.id),
+      anketCevapBirimAdi:
+        soru.anketCevapBirimAdi?.trim() ||
+        (definition ? resolveQuestionBirimAdi(definition, new Map()) : null),
     }
   })
 }

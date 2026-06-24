@@ -125,6 +125,22 @@
     background-color: #fff9f0;
   }
 
+  .app-table tbody tr.app-table-row--in-progress {
+    @apply bg-yellow-50;
+  }
+
+  .app-table tbody tr.app-table-row--in-progress:hover {
+    @apply bg-yellow-100/70;
+  }
+
+  .app-table tbody tr.app-table-row--completed {
+    @apply bg-green-50;
+  }
+
+  .app-table tbody tr.app-table-row--completed:hover {
+    @apply bg-green-100/70;
+  }
+
   .app-table td {
     @apply px-4 py-3 text-sm text-foreground/80;
   }

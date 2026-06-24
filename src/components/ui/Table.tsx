@@ -32,6 +32,7 @@ export interface TableProps<T> {
     pageSize: number
     pageSizeOptions?: number[]
   }
+  onRowDoubleClick?: (row: T) => void
 }
 
 export function Table<T>({
@@ -48,6 +49,7 @@ export function Table<T>({
   compact = false,
   tableClassName,
   pagination,
+  onRowDoubleClick,
 }: TableProps<T>) {
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedPageSize, setSelectedPageSize] = useState<number | null>(null)
@@ -136,7 +138,11 @@ export function Table<T>({
               </tr>
             ) : (
               visibleData.map((row) => (
-                <tr key={keyExtractor(row)} className={getRowClassName?.(row)}>
+                <tr
+                  key={keyExtractor(row)}
+                  className={cn(getRowClassName?.(row), onRowDoubleClick && 'cursor-pointer')}
+                  onDoubleClick={onRowDoubleClick ? () => onRowDoubleClick(row) : undefined}
+                >
                   {columns.map((col) => (
                     <td key={col.key} className={col.className}>
                       {col.render(row)}

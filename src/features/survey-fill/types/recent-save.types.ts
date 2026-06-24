@@ -1,3 +1,5 @@
+import { buildSurveyFillDeepLink as buildSurveyFillDeepLinkInternal } from '../utils/survey-fill-navigation'
+
 export interface SurveyFillRecentSave {
   id: string
   baslikId: number
@@ -19,10 +21,9 @@ export function buildRecentSaveId(
 }
 
 export function buildSurveyFillDeepLink(save: Pick<SurveyFillRecentSave, 'baslikId' | 'sablonId' | 'ekiciId'>) {
-  const params = new URLSearchParams({
-    baslikId: String(save.baslikId),
-    sablonId: String(save.sablonId),
+  return buildSurveyFillDeepLinkInternal({
+    baslikId: save.baslikId,
+    sablonId: save.sablonId,
     ekiciId: save.ekiciId,
   })
-  return `/anket-doldurma?${params.toString()}`
 }

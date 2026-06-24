@@ -10,6 +10,8 @@ import type { AnswerTypeKindLookup } from '../utils/build-answer-type-kind-looku
 import { getFriendlyAnswerTypeLabel } from '@/features/questions/utils/answer-type-label'
 import { getQuestionKey } from '../utils/question-key'
 import { getSurveyFillQuestionLabel } from '../utils/is-ekici-producer-question'
+import { resolveLinkedQuestionTriggerHint } from '../utils/resolve-linked-question-trigger-hint'
+import { resolveSurveyFillBirimAdi } from '../utils/resolve-survey-fill-birim-adi'
 import {
   parseMultiSelectValue,
   toggleMultiSelectValue,
@@ -22,6 +24,7 @@ import {
 
 interface SurveyFillQuestionFieldProps {
   question: SurveyFillSoruView
+  allQuestions?: SurveyFillSoruView[]
   /** Verilmezse soru numarası gösterilmez (üretimi yapan kişi sorusu). */
   displayNumber?: number
   value: string
@@ -35,6 +38,7 @@ interface SurveyFillQuestionFieldProps {
   useManualEntry?: boolean
   onEnableManualEntry?: () => void
   onDisableManualEntry?: () => void
+  answerUnitsById?: ReadonlyMap<number, string>
 }
 
 function renderAnswerControl(
@@ -171,6 +175,7 @@ function renderAnswerControl(
 
 export function SurveyFillQuestionField({
   question,
+  allQuestions = [],
   displayNumber,
   value,
   error,
@@ -183,12 +188,14 @@ export function SurveyFillQuestionField({
   useManualEntry = false,
   onEnableManualEntry,
   onDisableManualEntry,
+  answerUnitsById,
 }: SurveyFillQuestionFieldProps) {
   const fieldId = `survey-fill-${getQuestionKey(question)}`
   const kind = resolveEffectiveQuestionInputKind(question, answerTypeLookup, useManualEntry)
   const showSecenekDropdown =
     kind === 'select' && hasSecenekGrupDropdown(question) && !useManualEntry
   const questionLabel = getSurveyFillQuestionLabel(question)
+  const birimAdi = resolveSurveyFillBirimAdi(question, answerUnitsById)
   const answerHint = question.cevapGirdiTipAdi
     ? getFriendlyAnswerTypeLabel(question.cevapGirdiTipAdi)
     : undefined
@@ -196,9 +203,15 @@ export function SurveyFillQuestionField({
     value: String(option.id),
     label: option.adi,
   }))
+  const linkedTriggerHint = resolveLinkedQuestionTriggerHint(
+    question,
+    allQuestions,
+    answerTypeLookup,
+  )
 
   return (
     <article
+      id={`survey-fill-question-${getQuestionKey(question)}`}
       className={cn(
         'rounded-xl border border-border/80 bg-surface-elevated/60 p-4 sm:p-5',
         question.bagliSoru && 'ml-3 border-l-4 border-l-primary-300/70 sm:ml-4',
@@ -216,6 +229,16 @@ export function SurveyFillQuestionField({
           </p>
           {kind !== 'ekici' && question.altSoruMetni?.trim() && (
             <p className="text-xs leading-snug text-muted sm:text-sm">{question.altSoruMetni}</p>
+          )}
+          {birimAdi && (
+            <p className="text-xs text-muted">
+              Birim: <span className="font-medium text-foreground">{birimAdi}</span>
+            </p>
+          )}
+          {linkedTriggerHint && (
+            <p className="rounded-md border border-primary-200/80 bg-primary-50/80 px-2.5 py-1.5 text-xs leading-snug text-primary-800">
+              {linkedTriggerHint}
+            </p>
           )}
         </div>
         {question.zorunlu && (

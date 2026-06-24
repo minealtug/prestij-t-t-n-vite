@@ -34,6 +34,7 @@ export const queryKeys = {
   },
   ekiciDefinitions: {
     all: ['ekici-definitions'] as const,
+    mintikam: ['ekici-definitions', 'mintikam'] as const,
   },
   permissions: {
     menus: ['permissions', 'menus'] as const,
@@ -48,8 +49,13 @@ export const queryKeys = {
     detail: (ekiciId: string, sablonId: number, baslikId?: number) =>
       ['survey-responses', 'detail', ekiciId, sablonId, baslikId ?? null] as const,
   },
+  cografiFiltre: {
+    options: ['cografi-filtre', 'options'] as const,
+    mintikaOptions: ['cografi-filtre', 'mintika-options'] as const,
+  },
   surveyFill: {
-    ekiciler: ['survey-fill', 'ekiciler'] as const,
+    ekicilerRoot: ['survey-fill', 'ekiciler'] as const,
+    ekiciler: (params?: object) => ['survey-fill', 'ekiciler', params ?? {}] as const,
     sablonlar: (baslikId: number) => ['survey-fill', 'sablonlar', baslikId] as const,
     oturum: (params: { baslikId: number; sablonId: number; ekiciId: string }) =>
       ['survey-fill', 'oturum', params] as const,

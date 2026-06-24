@@ -13,6 +13,7 @@ export interface AuthUserDto {
   departmanId: number | null
   departmanAdi: string | null
   mintikaId: number | null
+  fotografUrl?: string | null
 }
 
 export interface LoginResponse {
@@ -33,6 +34,7 @@ export interface AuthMeResponse {
     mintikaId?: number | null
     aktif: boolean
     admin: boolean
+    fotografUrl?: string | null
   }
   permissions: string[]
   yetkiIds: number[]

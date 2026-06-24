@@ -1,11 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, Info, Save, FilePen } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AlertTriangle, CheckCircle2, Info, Save, FilePen } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import { EmptyState } from '@/components/feedback/EmptyState'
 import { Skeleton } from '@/components/feedback/Skeleton'
 import { SearchableSelect } from '@/components/ui/SearchableSelect'
+import { CografiFiltreFields } from '@/features/cografi-filtre/components/CografiFiltreFields'
+import { useCografiFiltreCascade } from '@/features/cografi-filtre/hooks/use-cografi-filtre-cascade'
+import { useMintikaCografiFiltreOptions } from '@/features/cografi-filtre/hooks/use-cografi-filtre-options'
 import { useAnswerInputTypes, useQuestions } from '@/features/questions/hooks/use-questions'
+import { useAnswerUnits } from '@/features/answer-units/hooks/use-answer-units'
 import { useAuthStore } from '@/stores/auth-store'
 import { useUser } from '@/features/users/hooks/use-users'
 import { getErrorMessage } from '@/lib/api/api-error'
@@ -22,7 +26,8 @@ import {
   mergeAltSeceneklerIntoQuestions,
 } from '../utils/enrich-oturum-questions'
 import { isEkiciProducerQuestion } from '../utils/is-ekici-producer-question'
-import { getEkiciFullName } from '../utils/normalize-ekici-api'
+import { isAnketTamamlandiForEkici } from '../utils/is-anket-tamamlandi'
+import { getEkiciFullName, isEkiciActive } from '../utils/normalize-ekici-api'
 import { buildAnswerTypeKindLookup } from '../utils/build-answer-type-kind-lookup'
 import { buildAnketYanitCevapRequest } from '../utils/build-anket-yanit-cevap'
 import {
@@ -39,13 +44,14 @@ import {
 import { sortSurveyFillQuestions } from '../utils/sort-survey-fill-questions'
 import { getQuestionKey } from '../utils/question-key'
 import { resolveSurveyFillMintikaId } from '../utils/resolve-survey-fill-mintika-id'
-import { validateSurveyFillAnswers } from '../utils/validate-survey-fill-answers'
+import { validateSurveyFillAnswers, buildRequiredAnswersSubmitError } from '../utils/validate-survey-fill-answers'
 import {
   applyManualEntryInitialAnswers,
   detectInitialManualEntryKeys,
 } from '../utils/manual-entry'
 import { filterVisibleQuestionsForFill } from '../utils/resolve-linked-question-visibility'
 import { SurveyFillSuccessModal } from './SurveyFillSuccessModal'
+import type { SurveyFillDeepLinkParams } from '../utils/survey-fill-navigation'
 
 interface SurveyFillFormProps {
   baslikId: number
@@ -53,6 +59,10 @@ interface SurveyFillFormProps {
   baslikAdi?: string
   sablonAdi?: string
   initialEkiciId?: string | null
+  initialGeoFilters?: Pick<
+    SurveyFillDeepLinkParams,
+    'menseiId' | 'bolgeId' | 'mintikaId' | 'alimNoktasiId' | 'koyId'
+  > | null
   canSubmit?: boolean
   onRefreshSablonlar?: () => void
 }
@@ -61,6 +71,7 @@ export function SurveyFillForm({
   baslikId,
   sablonId,
   initialEkiciId = null,
+  initialGeoFilters = null,
   canSubmit = true,
   onRefreshSablonlar,
 }: SurveyFillFormProps) {
@@ -80,11 +91,23 @@ export function SurveyFillForm({
   const questionDefinitionsQuery = useQuestions(
     effectiveBaslikId > 0 ? effectiveBaslikId : undefined,
   )
+  const answerUnitsQuery = useAnswerUnits()
   const answerTypeLookup = useMemo(
     () => buildAnswerTypeKindLookup(answerInputTypesQuery.data),
     [answerInputTypesQuery.data],
   )
-  const ekicilerQuery = useEkiciler(true)
+  const answerUnitsById = useMemo(
+    () =>
+      new Map(
+        (answerUnitsQuery.data ?? [])
+          .filter((unit) => unit.id > 0 && unit.adi.trim())
+          .map((unit) => [unit.id, unit.adi.trim()] as const),
+      ),
+    [answerUnitsQuery.data],
+  )
+  const cografiFiltreQuery = useMintikaCografiFiltreOptions()
+  const geoCascade = useCografiFiltreCascade(cografiFiltreQuery.data)
+  const ekicilerQuery = useEkiciler(geoCascade.queryParams)
   const authUser = useAuthStore((state) => state.user)
   const authUserId = authUser?.id ? Number(authUser.id) : null
   const currentUserQuery = useUser(
@@ -155,26 +178,26 @@ export function SurveyFillForm({
 
   const altSeceneklerQuery = useAltSeceneklerByGrupIds(secenekGrupIds)
 
-  const visibleQuestions = useMemo(() => {
-    const merged = mergeAltSeceneklerIntoQuestions(
-      enrichedQuestions,
-      altSeceneklerQuery.optionsByGrupId,
-      altSecenekIdsBySoruId,
-    )
-    return filterVisibleQuestionsForFill(
-      merged,
-      answers,
-      answerTypeLookup,
-      manualEntryByKey,
-    )
-  }, [
-    enrichedQuestions,
-    altSeceneklerQuery.optionsByGrupId,
-    altSecenekIdsBySoruId,
-    answers,
-    answerTypeLookup,
-    manualEntryByKey,
-  ])
+  const questionsWithOptions = useMemo(
+    () =>
+      mergeAltSeceneklerIntoQuestions(
+        enrichedQuestions,
+        altSeceneklerQuery.optionsByGrupId,
+        altSecenekIdsBySoruId,
+      ),
+    [enrichedQuestions, altSeceneklerQuery.optionsByGrupId, altSecenekIdsBySoruId],
+  )
+
+  const visibleQuestions = useMemo(
+    () =>
+      filterVisibleQuestionsForFill(
+        questionsWithOptions,
+        answers,
+        answerTypeLookup,
+        manualEntryByKey,
+      ),
+    [questionsWithOptions, answers, answerTypeLookup, manualEntryByKey],
+  )
 
   const progress = useMemo(
     () => getFormFillProgress(visibleQuestions, answers, answerTypeLookup, manualEntryByKey),
@@ -222,6 +245,15 @@ export function SurveyFillForm({
     [ekicilerQuery.data, sessionEkiciId],
   )
 
+  const isSelectedEkiciPassive = selectedEkici != null && !isEkiciActive(selectedEkici)
+
+  const isSelectedEkiciSurveyCompleted = useMemo(
+    () =>
+      Boolean(sessionEkiciId && oturumQuery.data && !oturumQuery.isLoading) &&
+      isAnketTamamlandiForEkici(oturumQuery.data),
+    [sessionEkiciId, oturumQuery.data, oturumQuery.isLoading],
+  )
+
   const mintikaId = useMemo(
     () =>
       resolveSurveyFillMintikaId({
@@ -238,22 +270,97 @@ export function SurveyFillForm({
   )
 
   const questionsReady = Boolean(sessionEkiciId && oturumQuery.data && !oturumQuery.isLoading)
-  const questionsDisabled = !questionsReady
+  const questionsDisabled =
+    !questionsReady || isSelectedEkiciPassive || isSelectedEkiciSurveyCompleted
   const showQuestionsLoading =
     questionDefinitionsQuery.isLoading ||
     Boolean(sessionEkiciId && oturumQuery.isLoading)
   const showTamamlanabilir =
-    Boolean(oturumQuery.data?.tamamlanabilir) && visibleQuestions.length > 0
+    Boolean(oturumQuery.data?.tamamlanabilir) &&
+    visibleQuestions.length > 0 &&
+    !isSelectedEkiciSurveyCompleted
+
+  const geoFilterKey = useMemo(
+    () => JSON.stringify(geoCascade.queryParams),
+    [geoCascade.queryParams],
+  )
+  const previousGeoFilterKeyRef = useRef(geoFilterKey)
+  const skipNextGeoClearRef = useRef(false)
+  const deepLinkBootstrapKeyRef = useRef('')
+
+  const deepLinkBootstrapKey = useMemo(
+    () =>
+      JSON.stringify({
+        baslikId,
+        sablonId,
+        initialEkiciId,
+        initialGeoFilters,
+      }),
+    [baslikId, sablonId, initialEkiciId, initialGeoFilters],
+  )
 
   useEffect(() => {
-    setSessionEkiciId(initialEkiciId)
+    setSessionEkiciId(null)
     setAnswers({})
     setInitialAnswers({})
     setManualEntryByKey({})
     setFieldErrors({})
     setSubmitError('')
     setSuccessModalOpen(false)
-  }, [baslikId, sablonId, initialEkiciId])
+    deepLinkBootstrapKeyRef.current = ''
+
+    if (!initialGeoFilters) {
+      skipNextGeoClearRef.current = true
+      geoCascade.resetToScopedDefaults()
+    }
+  }, [baslikId, initialGeoFilters, geoCascade.resetToScopedDefaults])
+
+  useEffect(() => {
+    if (!initialGeoFilters || !cografiFiltreQuery.data) return
+    if (deepLinkBootstrapKeyRef.current === deepLinkBootstrapKey) return
+
+    skipNextGeoClearRef.current = true
+    geoCascade.applyFromQueryParams(initialGeoFilters)
+    deepLinkBootstrapKeyRef.current = deepLinkBootstrapKey
+  }, [
+    initialGeoFilters,
+    cografiFiltreQuery.data,
+    deepLinkBootstrapKey,
+    geoCascade.applyFromQueryParams,
+  ])
+
+  useEffect(() => {
+    if (!initialEkiciId || ekicilerQuery.isLoading) return
+    if (!geoCascade.queryParams.mintikaId) return
+
+    const ekiciExists = (ekicilerQuery.data ?? []).some((ekici) => ekici.id === initialEkiciId)
+    if (ekiciExists) {
+      setSessionEkiciId(initialEkiciId)
+    }
+  }, [
+    initialEkiciId,
+    ekicilerQuery.isLoading,
+    ekicilerQuery.data,
+    geoCascade.queryParams.mintikaId,
+    deepLinkBootstrapKey,
+  ])
+
+  useEffect(() => {
+    if (previousGeoFilterKeyRef.current === geoFilterKey) return
+    previousGeoFilterKeyRef.current = geoFilterKey
+
+    if (skipNextGeoClearRef.current) {
+      skipNextGeoClearRef.current = false
+      return
+    }
+
+    setSessionEkiciId(null)
+    setAnswers({})
+    setInitialAnswers({})
+    setManualEntryByKey({})
+    setFieldErrors({})
+    setSubmitError('')
+  }, [geoFilterKey])
 
   useEffect(() => {
     if (sessionEkiciId) {
@@ -293,6 +400,7 @@ export function SurveyFillForm({
   const handleRefresh = () => {
     void oturumQuery.refetch()
     onRefreshSablonlar?.()
+    void cografiFiltreQuery.refetch()
     void ekicilerQuery.refetch()
     void questionDefinitionsQuery.refetch()
   }
@@ -345,6 +453,20 @@ export function SurveyFillForm({
       return
     }
 
+    if (isSelectedEkiciPassive) {
+      setSubmitError(
+        'Seçtiğiniz ekici pasif durumda. Anket kaydı yapılamaz; ekiciyi aktif hale getirin veya başka bir ekici seçin.',
+      )
+      return
+    }
+
+    if (isSelectedEkiciSurveyCompleted) {
+      setSubmitError(
+        'Bu ekici için anket tamamlandı. Lütfen başka bir ekici seçin.',
+      )
+      return
+    }
+
     if (sablonId <= 0) {
       setSubmitError('Bu anket için kayıt şablonu bulunamadı.')
       return
@@ -359,6 +481,17 @@ export function SurveyFillForm({
       )
       if (Object.keys(validationErrors).length > 0) {
         setFieldErrors(validationErrors)
+        setSubmitError(buildRequiredAnswersSubmitError(Object.keys(validationErrors).length))
+
+        const firstInvalidQuestion = visibleQuestions.find(
+          (question) => validationErrors[getQuestionKey(question)],
+        )
+        if (firstInvalidQuestion) {
+          const elementId = `survey-fill-question-${getQuestionKey(firstInvalidQuestion)}`
+          requestAnimationFrame(() => {
+            document.getElementById(elementId)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          })
+        }
         return
       }
     }
@@ -470,6 +603,16 @@ export function SurveyFillForm({
       )
     }
 
+    if (sessionEkiciId && isSelectedEkiciSurveyCompleted) {
+      return (
+        <EmptyState
+          compact
+          title="Anket tamamlandı"
+          description="Bu ekici için anket tamamlandı. Lütfen başka bir ekici seçin."
+        />
+      )
+    }
+
     if (visibleQuestions.length === 0) {
       if (sessionEkiciId && oturumQuery.data?.tamamlanabilir) {
         return (
@@ -513,6 +656,7 @@ export function SurveyFillForm({
           <SurveyFillQuestionField
             key={key}
             question={question}
+            allQuestions={questionsWithOptions}
             displayNumber={getQuestionDisplayNumber(visibleQuestions, question)}
             value={answers[key] ?? ''}
             error={fieldErrors[key]}
@@ -523,6 +667,7 @@ export function SurveyFillForm({
             useManualEntry={manualEntryByKey[key] ?? false}
             onEnableManualEntry={() => handleEnableManualEntry(key)}
             onDisableManualEntry={() => handleDisableManualEntry(key)}
+            answerUnitsById={answerUnitsById}
           />
         )
       })}
@@ -533,6 +678,34 @@ export function SurveyFillForm({
     <>
       <div className="border-t border-border">
         <div className="space-y-4 px-5 py-5">
+          {cografiFiltreQuery.isError && (
+            <ErrorState
+              error={cografiFiltreQuery.error}
+              title="Coğrafi filtreler yüklenemedi"
+              onRetry={() => void cografiFiltreQuery.refetch()}
+              compact
+            />
+          )}
+
+          {cografiFiltreQuery.isLoading ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Skeleton key={index} className="h-11 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : (
+            <CografiFiltreFields
+              values={geoCascade.values}
+              selectOptions={geoCascade.selectOptions}
+              lockedLevels={geoCascade.lockedLevels}
+              onMenseiChange={geoCascade.setMenseiId}
+              onBolgeChange={geoCascade.setBolgeId}
+              onMintikaChange={geoCascade.setMintikaId}
+              onAlimNoktasiChange={geoCascade.setAlimNoktasiId}
+              onKoyChange={geoCascade.setKoyId}
+            />
+          )}
+
           {ekicilerQuery.isError && (
             <ErrorState
               error={ekicilerQuery.error}
@@ -550,14 +723,50 @@ export function SurveyFillForm({
               value={sessionEkiciId ?? ''}
               onChange={handleEkiciChange}
               options={ekiciOptions}
-              disabled={ekicilerQuery.isLoading}
+              disabled={ekicilerQuery.isLoading || !geoCascade.queryParams.mintikaId}
               placeholder="Ad veya soyad ile ekici ara..."
-              emptyMessage="Eşleşen ekici bulunamadı"
+              emptyMessage={
+                geoCascade.queryParams.koyId
+                  ? 'Seçilen köyde ekici bulunamadı'
+                  : geoCascade.queryParams.alimNoktasiId
+                    ? 'Seçilen alım noktasında ekici bulunamadı'
+                    : 'Eşleşen ekici bulunamadı'
+              }
             />
+          )}
+
+          {isSelectedEkiciPassive && selectedEkici && (
+            <div
+              className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+              role="alert"
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <p>
+                <span className="font-medium">{getEkiciFullName(selectedEkici)}</span> pasif
+                durumda. Bu ekici için anket doldurulamaz. Ekiciyi aktif hale getirin veya
+                listeden başka bir ekici seçin.
+              </p>
+            </div>
+          )}
+
+          {isSelectedEkiciSurveyCompleted && selectedEkici && !isSelectedEkiciPassive && (
+            <div
+              className="flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900"
+              role="alert"
+            >
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <p>
+                <span className="font-medium">{getEkiciFullName(selectedEkici)}</span> için bu
+                anket tamamlandı. Lütfen başka bir ekici seçin.
+              </p>
+            </div>
           )}
         </div>
 
-        {sessionEkiciId && visibleQuestions.length > 0 && !oturumQuery.isError && (
+        {sessionEkiciId &&
+          visibleQuestions.length > 0 &&
+          !oturumQuery.isError &&
+          !isSelectedEkiciSurveyCompleted && (
           <div className="border-t border-border px-5 py-4">
             <p className="text-sm text-muted">
               Doldurulan:{' '}
@@ -592,7 +801,13 @@ export function SurveyFillForm({
             <Button
               variant="outline"
               onClick={handleSaveDraft}
-              disabled={!canSubmit || !sessionEkiciId || draftQuestionsToSubmit.length === 0}
+              disabled={
+                !canSubmit ||
+                !sessionEkiciId ||
+                isSelectedEkiciPassive ||
+                isSelectedEkiciSurveyCompleted ||
+                draftQuestionsToSubmit.length === 0
+              }
               loading={submitCevapBatch.isPending || oturumQuery.isFetching}
             >
               <FilePen className="h-4 w-4" />
@@ -600,7 +815,12 @@ export function SurveyFillForm({
             </Button>
             <Button
               onClick={handleSubmitAnswers}
-              disabled={!canSubmit || !sessionEkiciId}
+              disabled={
+                !canSubmit ||
+                !sessionEkiciId ||
+                isSelectedEkiciPassive ||
+                isSelectedEkiciSurveyCompleted
+              }
               loading={submitCevapBatch.isPending || oturumQuery.isFetching}
             >
               <Save className="h-4 w-4" />

@@ -1,4 +1,5 @@
 import type { QuestionDto } from '@/features/questions/types/question.types'
+import { resolveQuestionBirimAdi } from '@/features/questions/utils/resolve-question-birim-adi'
 import { normalizeBagliKosulTipi } from '@/features/questions/utils/bagli-kosul-tipi'
 import type { AnketYanitOturumDto, AnketYanitSoruDto } from '../types/anket-yanit.types'
 import type { AnswerTypeKindLookup } from './build-answer-type-kind-lookup'
@@ -45,6 +46,8 @@ export function mapQuestionDefinitionToOturumPreview(
     cevapGirdiTipId: question.cevapGirdiTipId ?? null,
     secenekGrupId: readQuestionSecenekGrupId(question),
     altSecenekler: [],
+    anketCevapBirimId: question.anketCevapBirimId ?? null,
+    anketCevapBirimAdi: resolveQuestionBirimAdi(question, new Map()),
     yanitlandi: false,
     cevapText: null,
     cevapAltSecenekId: null,

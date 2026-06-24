@@ -39,6 +39,7 @@ function mapAuthUser(userRaw: Record<string, unknown>, fallbackUserName = ''): A
     departmanId: readNumber(pick(userRaw, 'departmanId', 'DepartmanId')),
     departmanAdi: pick(userRaw, 'departmanAdi', 'DepartmanAdi') ?? null,
     mintikaId: readNumber(pick(userRaw, 'mintikaId', 'MintikaId')),
+    fotografUrl: pick(userRaw, 'fotografUrl', 'FotografUrl') ?? null,
   }
 }
 
@@ -83,6 +84,7 @@ export function normalizeAuthMeResponse(raw: unknown): AuthMeResponse {
       mintikaId: readNumber(pick(userRaw, 'mintikaId', 'MintikaId')),
       aktif: Boolean(pick(userRaw, 'aktif', 'Aktif') ?? true),
       admin: Boolean(pick(userRaw, 'admin', 'Admin') ?? false),
+      fotografUrl: pick(userRaw, 'fotografUrl', 'FotografUrl') ?? null,
     },
     permissions: mapAllowedMenuUrlsFromApi(permissionsRaw),
     yetkiIds: mapYetkiIdsFromApi(yetkiIdsRaw),
@@ -99,5 +101,6 @@ export function mapAuthMeUserToSession(user: AuthMeResponse['user']) {
     departmanId: user.departmanId ?? null,
     departmanAdi: user.departmanAdi ?? null,
     mintikaId: user.mintikaId ?? null,
+    fotografUrl: user.fotografUrl ?? null,
   }
 }

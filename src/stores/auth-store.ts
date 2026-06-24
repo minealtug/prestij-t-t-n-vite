@@ -15,6 +15,7 @@ export interface AuthUser {
   departmanId: number | null
   departmanAdi: string | null
   mintikaId: number | null
+  fotografUrl: string | null
 }
 
 interface AuthState {

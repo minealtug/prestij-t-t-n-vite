@@ -25,6 +25,8 @@ export interface AnketYanitSoruDto {
   cevapGirdiTipId: number | null
   secenekGrupId: number | null
   altSecenekler: AltSecenekOptionDto[]
+  anketCevapBirimId?: number | null
+  anketCevapBirimAdi?: string | null
   yanitlandi: boolean
   cevapText: string | null
   cevapAltSecenekId: number | null
@@ -40,6 +42,7 @@ export interface AnketYanitOturumDto {
   sablonAdi?: string | null
   yanitlananSoruSayisi?: number
   yanitlanmayanSoruSayisi?: number
+  toplamGorunurSoruSayisi?: number
   tamamlanabilir: boolean
   sorular: AnketYanitSoruDto[]
 }
@@ -101,4 +104,6 @@ export interface SurveyFillSoruView {
   cevapGirdiTipId?: number | null
   secenekGrupId?: number | null
   altSecenekler?: AltSecenekOptionDto[]
+  anketCevapBirimId?: number | null
+  anketCevapBirimAdi?: string | null
 }

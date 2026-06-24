@@ -7,6 +7,11 @@ import { useRequirePagePermission } from '@/features/permissions/hooks/use-requi
 import { useSurveys } from '@/features/surveys/hooks/use-surveys'
 import { SurveyFillForm } from '../components/SurveyFillForm'
 import { useAnketSablonlar } from '../hooks/use-anket-yanit'
+import {
+  DEFAULT_SURVEY_FILL_BASLIK_ID,
+  parseSurveyFillDeepLink,
+  type SurveyFillDeepLinkParams,
+} from '../utils/survey-fill-navigation'
 
 function parsePositiveInt(value: string | null): number {
   const parsed = Number(value)
@@ -16,27 +21,33 @@ function parsePositiveInt(value: string | null): number {
 export function SurveyFillPage() {
   const { canRead, canEdit, loading: permissionLoading } = useRequirePagePermission()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [selectedBaslikId, setSelectedBaslikId] = useState(() =>
-    parsePositiveInt(searchParams.get('baslikId')),
-  )
+  const [selectedBaslikId, setSelectedBaslikId] = useState(() => {
+    const fromUrl = parsePositiveInt(searchParams.get('baslikId'))
+    return fromUrl > 0 ? fromUrl : DEFAULT_SURVEY_FILL_BASLIK_ID
+  })
   const [selectedSablonId, setSelectedSablonId] = useState(0)
-  const [initialEkiciId, setInitialEkiciId] = useState<string | null>(null)
+  const [deepLink, setDeepLink] = useState<SurveyFillDeepLinkParams | null>(null)
 
   const surveysQuery = useSurveys()
   const sablonlarQuery = useAnketSablonlar(selectedBaslikId > 0 ? selectedBaslikId : null)
 
   useEffect(() => {
-    const baslikId = parsePositiveInt(searchParams.get('baslikId'))
-    const sablonId = parsePositiveInt(searchParams.get('sablonId'))
-    const ekiciId = searchParams.get('ekiciId')?.trim() || null
+    const parsed = parseSurveyFillDeepLink(searchParams)
+    if (!parsed) return
 
-    if (baslikId <= 0 || sablonId <= 0 || !ekiciId) return
-
-    setSelectedBaslikId(baslikId)
-    setSelectedSablonId(sablonId)
-    setInitialEkiciId(ekiciId)
-    setSearchParams({ baslikId: String(baslikId) }, { replace: true })
+    setSelectedBaslikId(parsed.baslikId)
+    if (parsed.sablonId) {
+      setSelectedSablonId(parsed.sablonId)
+    }
+    setDeepLink(parsed)
+    setSearchParams({ baslikId: String(parsed.baslikId) }, { replace: true })
   }, [searchParams, setSearchParams])
+
+  useEffect(() => {
+    if (parsePositiveInt(searchParams.get('baslikId')) > 0) return
+    if (selectedBaslikId <= 0) return
+    setSearchParams({ baslikId: String(selectedBaslikId) }, { replace: true })
+  }, [searchParams, selectedBaslikId, setSearchParams])
 
   useEffect(() => {
     const surveys = surveysQuery.data
@@ -45,6 +56,7 @@ export function SurveyFillPage() {
     const exists = surveys.some((survey) => Number(survey.id) === selectedBaslikId)
     if (!exists) {
       setSelectedBaslikId(0)
+      setDeepLink(null)
       setSearchParams({}, { replace: true })
     }
   }, [surveysQuery.data, selectedBaslikId, setSearchParams])
@@ -61,11 +73,17 @@ export function SurveyFillPage() {
       return
     }
 
+    const preferredSablonId = deepLink?.baslikId === selectedBaslikId ? deepLink.sablonId : undefined
+    if (preferredSablonId && sablonlar.some((sablon) => sablon.id === preferredSablonId)) {
+      setSelectedSablonId(preferredSablonId)
+      return
+    }
+
     const currentSablonValid = sablonlar.some((sablon) => sablon.id === selectedSablonId)
     if (!currentSablonValid) {
       setSelectedSablonId(sablonlar[0].id)
     }
-  }, [selectedBaslikId, sablonlarQuery.data, selectedSablonId])
+  }, [selectedBaslikId, sablonlarQuery.data, selectedSablonId, deepLink])
 
   const selectedSurvey = useMemo(
     () => (surveysQuery.data ?? []).find((survey) => Number(survey.id) === selectedBaslikId),
@@ -97,6 +115,9 @@ export function SurveyFillPage() {
   const selectDisabled =
     surveysQuery.isLoading && (surveysQuery.data?.length ?? 0) === 0
 
+  const activeDeepLink =
+    deepLink && deepLink.baslikId === selectedBaslikId ? deepLink : null
+
   if (permissionLoading) {
     return (
       <PageContainer>
@@ -118,7 +139,7 @@ export function SurveyFillPage() {
               const baslikId = Number(e.target.value) || 0
               setSelectedBaslikId(baslikId)
               setSelectedSablonId(0)
-              setInitialEkiciId(null)
+              setDeepLink(null)
               if (baslikId > 0) {
                 setSearchParams({ baslikId: String(baslikId) }, { replace: true })
               } else {
@@ -137,7 +158,8 @@ export function SurveyFillPage() {
             sablonId={selectedSablonId}
             baslikAdi={selectedSurvey?.name}
             sablonAdi={selectedSablon?.adi}
-            initialEkiciId={initialEkiciId}
+            initialEkiciId={activeDeepLink?.ekiciId ?? null}
+            initialGeoFilters={activeDeepLink}
             canSubmit={canEdit && selectedSablonId > 0}
             onRefreshSablonlar={() => void sablonlarQuery.refetch()}
           />

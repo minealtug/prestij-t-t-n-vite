@@ -15,6 +15,7 @@ import { SurveyFillPage } from '@/features/survey-fill/pages/SurveyFillPage'
 import { AnswerUnitsPage } from '@/features/answer-units/pages/AnswerUnitsPage'
 import { OptionGroupsPage } from '@/features/option-groups/pages/OptionGroupsPage'
 import { EkiciDefinitionsPage } from '@/features/ekici-definitions/pages/EkiciDefinitionsPage'
+import { EkicilerimPage } from '@/features/ekici-definitions/pages/EkicilerimPage'
 import { ModulePage } from '@/pages/ModulePage'
 import { ReportsPage } from '@/features/reports/pages/ReportsPage'
 import { AgeGenderReportPage } from '@/features/reports/pages/AgeGenderReportPage'
@@ -51,6 +52,7 @@ export const router = createBrowserRouter([
             element: <Navigate to="/tanimlamalar/anket-tanimlamalari" replace />,
           },
           { path: 'anket-doldurma', element: <SurveyFillPage /> },
+          { path: 'ekicilerim', element: <EkicilerimPage /> },
           { path: 'anket-cevaplari', element: <SurveyResponsesPage /> },
           { path: 'cevapladigim-anketler', element: <MySurveyResponsesPage /> },
           {

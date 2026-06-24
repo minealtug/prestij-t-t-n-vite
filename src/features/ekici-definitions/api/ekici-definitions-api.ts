@@ -16,6 +16,11 @@ export const ekiciDefinitionsApi = {
     return mapEkiciDefinitionsFromApi(raw)
   },
 
+  getByCurrentUserMintika: async (): Promise<EkiciDefinitionDto[]> => {
+    const raw = await apiClient.get<unknown[]>('/api/Ekici/mintikam')
+    return mapEkiciDefinitionsFromApi(raw)
+  },
+
   getById: async (id: string): Promise<EkiciDefinitionDto> => {
     const raw = await apiClient.get<unknown>(`/api/Ekici/${id}`)
     const mapped = mapEkiciDefinitionFromApi(raw)

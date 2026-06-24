@@ -16,6 +16,7 @@ function syncAuthUserIfSelf(updatedUser: UserDto | null) {
     departmanId: updatedUser.departmanId,
     departmanAdi: updatedUser.departmanAdi,
     mintikaId: updatedUser.mintikaId,
+    fotografUrl: updatedUser.fotografUrl,
   })
 }
 
@@ -82,6 +83,32 @@ export function useUpdateUser() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.all() })
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.detail(String(variables.id)) })
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.departmans })
+    },
+  })
+}
+
+export function useUploadUserPhoto() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, file }: { id: number; file: File }) => usersApi.uploadPhoto(id, file),
+    onSuccess: (data, variables) => {
+      syncAuthUserIfSelf(data)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.all() })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.detail(String(variables.id)) })
+    },
+  })
+}
+
+export function useDeleteUserPhoto() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: number) => usersApi.deletePhoto(id),
+    onSuccess: (data, id) => {
+      syncAuthUserIfSelf(data)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.all() })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.detail(String(id)) })
     },
   })
 }

@@ -17,6 +17,15 @@ function readNumber(raw: unknown): number | null {
   return Number.isFinite(num) && num > 0 ? num : null
 }
 
+function readAktif(raw: unknown): number {
+  const num = Number(raw)
+  return Number.isFinite(num) ? num : 1
+}
+
+export function isEkiciActive(ekici: Pick<EkiciDto, 'aktif'>): boolean {
+  return ekici.aktif === 1
+}
+
 export function getEkiciFullName(ekici: Pick<EkiciDto, 'adi' | 'soyad'>): string {
   return [ekici.adi, ekici.soyad].filter(Boolean).join(' ').trim() || '—'
 }
@@ -31,6 +40,7 @@ export function mapEkiciFromApi(raw: unknown): EkiciDto | null {
     adi: String(pick(row, 'adi', 'Adi', 'ad', 'Ad') ?? '').trim(),
     soyad: String(pick(row, 'soyad', 'Soyad') ?? '').trim(),
     mintikaId: readNumber(pick(row, 'mintikaId', 'MintikaId')),
+    aktif: readAktif(pick(row, 'aktif', 'Aktif')),
   }
 }
 

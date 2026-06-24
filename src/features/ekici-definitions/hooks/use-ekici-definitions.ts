@@ -13,6 +13,13 @@ export function useEkiciDefinitions() {
   })
 }
 
+export function useMyEkiciler() {
+  return useQuery({
+    queryKey: queryKeys.ekiciDefinitions.mintikam,
+    queryFn: () => ekiciDefinitionsApi.getByCurrentUserMintika(),
+  })
+}
+
 export function useCreateEkiciDefinition() {
   const queryClient = useQueryClient()
 
@@ -20,7 +27,7 @@ export function useCreateEkiciDefinition() {
     mutationFn: (payload: CreateEkiciDefinitionRequest) => ekiciDefinitionsApi.create(payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.ekiciDefinitions.all })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.surveyFill.ekiciler })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.surveyFill.ekicilerRoot })
     },
   })
 }
@@ -38,7 +45,7 @@ export function useUpdateEkiciDefinition() {
     }) => ekiciDefinitionsApi.update(id, payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.ekiciDefinitions.all })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.surveyFill.ekiciler })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.surveyFill.ekicilerRoot })
     },
   })
 }
@@ -50,7 +57,7 @@ export function useDeleteEkiciDefinition() {
     mutationFn: (id: string) => ekiciDefinitionsApi.delete(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.ekiciDefinitions.all })
-      void queryClient.invalidateQueries({ queryKey: queryKeys.surveyFill.ekiciler })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.surveyFill.ekicilerRoot })
     },
   })
 }

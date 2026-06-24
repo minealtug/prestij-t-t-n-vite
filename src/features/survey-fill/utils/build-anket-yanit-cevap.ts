@@ -15,6 +15,11 @@ export function buildAnketYanitCevapRequest(
   useManualEntry = false,
 ): AnketYanitCevapRequest {
   const kind = resolveEffectiveQuestionInputKind(soru, answerTypeLookup, useManualEntry)
+  const birimId =
+    soru.anketCevapBirimId != null && soru.anketCevapBirimId > 0 ? soru.anketCevapBirimId : null
+  const withBirim = (payload: AnketYanitCevapRequest): AnketYanitCevapRequest =>
+    birimId != null ? { ...payload, birimId } : payload
+
   const base: AnketYanitCevapRequest = {
     baslikId,
     sablonId,
@@ -24,45 +29,45 @@ export function buildAnketYanitCevapRequest(
   }
 
   if (kind === 'ekici') {
-    return { ...base, ekiciId: value || sessionEkiciId, cevapText: null }
+    return withBirim({ ...base, ekiciId: value || sessionEkiciId, cevapText: null })
   }
 
   if (kind === 'select') {
     const optionId = Number(value)
     if (Number.isFinite(optionId) && optionId > 0) {
-      return { ...base, cevapAltSecenekId: optionId, cevapText: null }
+      return withBirim({ ...base, cevapAltSecenekId: optionId, cevapText: null })
     }
-    return { ...base, cevapText: value.trim() || null }
+    return withBirim({ ...base, cevapText: value.trim() || null })
   }
 
   if (kind === 'multiSelect') {
     const optionIds = parseMultiSelectValue(value)
     if (optionIds.length > 0) {
-      return {
+      return withBirim({
         ...base,
         cevapAltSecenekIds: optionIds,
         cevapAltSecenekId: optionIds[0],
         cevapText: null,
-      }
+      })
     }
-    return { ...base, cevapAltSecenekIds: [], cevapText: null }
+    return withBirim({ ...base, cevapAltSecenekIds: [], cevapText: null })
   }
 
   if (kind === 'checkbox') {
-    return { ...base, cevapText: value === 'true' ? 'Evet' : 'Hayır' }
+    return withBirim({ ...base, cevapText: value === 'true' ? 'Evet' : 'Hayır' })
   }
 
   if (kind === 'number') {
     const numeric = Number(value)
     return Number.isFinite(numeric)
-      ? { ...base, cevapNumeric: numeric, cevapText: value.trim() || null }
-      : { ...base, cevapText: value.trim() || null }
+      ? withBirim({ ...base, cevapNumeric: numeric, cevapText: value.trim() || null })
+      : withBirim({ ...base, cevapText: value.trim() || null })
   }
 
   if (kind === 'date') {
     const dateValue = toDateOnlyApiValue(value)
-    return { ...base, cevapDatetime: dateValue, cevapText: dateValue }
+    return withBirim({ ...base, cevapDatetime: dateValue, cevapText: dateValue })
   }
 
-  return { ...base, cevapText: value.trim() || null }
+  return withBirim({ ...base, cevapText: value.trim() || null })
 }

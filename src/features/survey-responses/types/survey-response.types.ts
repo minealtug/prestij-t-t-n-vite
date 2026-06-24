@@ -1,31 +1,13 @@
-export interface FilterOptionDto {
-  id: number
-  adi: string
-}
+export type {
+  FilterOptionDto,
+  BolgeDto,
+  MintikaDto,
+  AlimNoktasiDto,
+  KoyDto,
+  CografiFiltreOptionsDto,
+} from '@/features/cografi-filtre/types'
 
-export interface BolgeDto extends FilterOptionDto {
-  menseiId: number
-}
-
-export interface MintikaDto extends FilterOptionDto {
-  bolgeId: number
-}
-
-export interface AlimNoktasiDto extends FilterOptionDto {
-  mintikaId: number
-}
-
-export interface KoyDto extends FilterOptionDto {
-  alimNoktasiId: number
-}
-
-export interface CografiFiltreOptionsDto {
-  menseiler: FilterOptionDto[]
-  bolgeler: BolgeDto[]
-  mintikalar: MintikaDto[]
-  alimNoktalari: AlimNoktasiDto[]
-  koyler: KoyDto[]
-}
+import type { CografiFiltreQueryParams } from '@/features/cografi-filtre/types'
 
 export interface AnketCevapDegerDto {
   cevapAltSecenekAdi: string | null
@@ -82,15 +64,10 @@ export interface SoruCevapDisplay {
 
 export const UNANSWERED_ANSWER_LABEL = 'Yanıtlanmadı'
 
-export interface SurveyResponsesQueryParams {
+export interface SurveyResponsesQueryParams extends CografiFiltreQueryParams {
   baslikId?: number
   /** Seçilen anket adı — API yanıtını istemci tarafında süzmek için (query string'e eklenmez). */
   anketAdi?: string
-  menseiId?: number
-  bolgeId?: number
-  alimNoktasiId?: number
-  mintikaId?: number
-  koyId?: number
 }
 
 export function hasGeoSurveyFilter(params?: SurveyResponsesQueryParams): boolean {

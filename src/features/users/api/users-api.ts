@@ -1,3 +1,4 @@
+import { api } from '@/lib/api/axios-instance'
 import { apiClient } from '@/lib/api/api-client'
 import type {
   CreateUserFormState,
@@ -84,4 +85,24 @@ export const usersApi = {
   },
 
   getMintikas: () => fetchAllMintikas(),
+
+  uploadPhoto: async (id: number, file: File): Promise<UserDto> => {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const { data } = await api.post<unknown>(`/api/User/${id}/fotograf`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+
+    const mapped = mapUserFromApi(data)
+    if (!mapped) throw new Error('Fotoğraf yüklendi ancak kullanıcı bilgisi alınamadı.')
+    return mapped
+  },
+
+  deletePhoto: async (id: number): Promise<UserDto> => {
+    const { data } = await api.delete<unknown>(`/api/User/${id}/fotograf`)
+    const mapped = mapUserFromApi(data)
+    if (!mapped) throw new Error('Fotoğraf kaldırıldı ancak kullanıcı bilgisi alınamadı.')
+    return mapped
+  },
 }

@@ -87,8 +87,8 @@ export function UserDashboardPage() {
   const totalSurveyCount = groups.completed.length + groups.partial.length
 
   const tamamlanmaTrend =
-    stats.tamamlanmaYuzdesi != null
-      ? `Genel tamamlanma oranı %${stats.tamamlanmaYuzdesi}`
+    stats.tamamlanmaOrani != null
+      ? `Genel tamamlanma oranı %${stats.tamamlanmaOrani}`
       : 'Henüz anket kaydı yok'
 
   return (

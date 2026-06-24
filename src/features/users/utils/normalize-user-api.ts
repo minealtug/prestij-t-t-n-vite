@@ -42,6 +42,7 @@ export function mapUserFromApi(raw: unknown): UserDto | null {
     uretimMerkeziYetki: Boolean(pick(row, 'uretimMerkeziYetki', 'UretimMerkeziYetki')),
     email: pick(row, 'email', 'Email') ?? null,
     tel: pick(row, 'tel', 'Tel') ?? null,
+    fotografUrl: pick(row, 'fotografUrl', 'FotografUrl') ?? null,
   }
 }
 

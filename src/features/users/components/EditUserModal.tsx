@@ -22,6 +22,7 @@ import {
 import { departmanAdlariToSelectOptions } from '../utils/departman-options'
 import { mapUserToFormState } from '../utils/map-user-form'
 import { validateUpdateUserForm } from '../utils/validate-create-user'
+import { UserPhotoField } from './UserPhotoField'
 
 interface EditUserModalProps {
   open: boolean
@@ -185,6 +186,18 @@ export function EditUserModal({ open, user, onClose }: EditUserModalProps) {
           className="max-h-[min(68vh,640px)] space-y-5 overflow-y-auto pr-1"
           noValidate
         >
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Fotoğraf</h3>
+            {sourceUser && (
+              <UserPhotoField
+                userId={sourceUser.id}
+                fullName={sourceUser.fullName}
+                fotografUrl={userDetailQuery.data?.fotografUrl ?? sourceUser.fotografUrl}
+                disabled={updateUser.isPending}
+              />
+            )}
+          </section>
+
           <section className="space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Kimlik</h3>
             <div className="grid gap-3 sm:grid-cols-2">

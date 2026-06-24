@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button'
 import { Table, type TableColumn } from '@/components/ui/Table'
 import { ErrorState } from '@/components/feedback/ErrorState'
 import type { UserDto } from '../types/user.types'
+import { UserAvatar } from './UserAvatar'
 
 interface UsersTableProps {
   data: UserDto[]
@@ -52,6 +53,14 @@ function buildColumns(
   isUpdating = false,
 ): TableColumn<UserDto>[] {
   return [
+  {
+    key: 'fotograf',
+    header: 'Foto',
+    className: 'w-12',
+    render: (row) => (
+      <UserAvatar fullName={row.fullName} fotografUrl={row.fotografUrl} cacheKey={row.id} />
+    ),
+  },
   {
     key: 'userName',
     header: 'Kullanıcı',

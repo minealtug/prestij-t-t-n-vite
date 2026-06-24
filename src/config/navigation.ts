@@ -73,6 +73,7 @@ export const sidebarSections: NavSection[] = [
       { to: '/anket-doldurma', label: 'Anket Doldurma Ekranı', icon: ClipboardPen },
       { to: '/anket-cevaplari', label: 'Cevaplanan Anketler', icon: MessageSquareReply },
       { to: '/cevapladigim-anketler', label: 'Cevapladığım Anketler', icon: MessageSquareReply },
+      { to: '/ekicilerim', label: 'Ekicilerim', icon: UserRound },
       { to: '/raporlar', label: 'Raporlar', icon: BarChart3 },
       {
         label: 'Tanımlamalar',
@@ -102,6 +103,7 @@ export const pageTitles: Record<string, string> = {
   '/anket-doldurma': 'Anket Doldurma Ekranı',
   '/anket-cevaplari': 'Cevaplanan Anketler',
   '/cevapladigim-anketler': 'Cevapladığım Anketler',
+  '/ekicilerim': 'Ekicilerim',
   '/raporlar': 'Raporlar',
   '/raporlar/yas-cinsiyet': 'Yaş–Cinsiyet Raporu',
   '/tanimlamalar': 'Tanımlamalar',

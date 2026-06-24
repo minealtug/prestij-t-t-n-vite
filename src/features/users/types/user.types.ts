@@ -17,6 +17,7 @@ export interface UserDto {
   uretimMerkeziYetki: boolean
   email: string | null
   tel: string | null
+  fotografUrl: string | null
 }
 
 export interface UsersQueryParams {

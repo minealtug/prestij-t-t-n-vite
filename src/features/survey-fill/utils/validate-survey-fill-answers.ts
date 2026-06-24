@@ -60,3 +60,11 @@ export function validateSurveyFillAnswers(
 
   return errors
 }
+
+export function buildRequiredAnswersSubmitError(errorCount: number): string {
+  if (errorCount <= 0) return ''
+  if (errorCount === 1) {
+    return 'Kaydetmeden önce zorunlu soruyu yanıtlayın.'
+  }
+  return `Kaydetmeden önce ${errorCount} zorunlu soruyu yanıtlayın.`
+}

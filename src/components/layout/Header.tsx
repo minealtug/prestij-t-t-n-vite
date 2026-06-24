@@ -1,6 +1,7 @@
 import { Menu, LogOut } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils/cn'
+import { UserAvatar } from '@/features/users/components/UserAvatar'
 import { useUiStore } from '@/stores/ui-store'
 import { useAuthStore } from '@/stores/auth-store'
 import { usePermissionsStore } from '@/features/permissions/stores/permissions-store'
@@ -43,9 +44,14 @@ export function Header() {
             'hidden items-center gap-2 rounded-lg border border-border px-3 py-1.5 sm:flex',
           )}
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-500 text-xs font-bold text-white">
-            {user?.fullName?.charAt(0) ?? 'P'}
-          </div>
+          <UserAvatar
+            fullName={user?.fullName ?? 'Kullanıcı'}
+            fotografUrl={user?.fotografUrl}
+            cacheKey={user?.id}
+            className="h-8 w-8 border-0 bg-primary-500"
+            imageClassName="h-8 w-8"
+            initialsClassName="font-bold text-white"
+          />
           <div className="hidden text-left md:block">
             <p className="text-xs font-medium text-foreground">{user?.fullName ?? 'Kullanıcı'}</p>
             <p className="text-[10px] text-muted">{user?.userName ?? user?.email ?? ''}</p>

@@ -102,6 +102,20 @@ function readAltSeceneklerFromFields(row: Record<string, unknown>) {
   )
 }
 
+function readBirimFields(row: Record<string, unknown>) {
+  const anketCevapBirim = asRecord(pick(row, 'anketCevapBirim', 'AnketCevapBirim'))
+  const anketCevapBirimId =
+    readOptionalPositiveId(pick(row, 'anketCevapBirimId', 'AnketCevapBirimId')) ??
+    readOptionalPositiveId(pick(anketCevapBirim, 'id', 'Id'))
+  const anketCevapBirimAdiRaw =
+    pick(row, 'anketCevapBirimAdi', 'AnketCevapBirimAdi') ??
+    pick(anketCevapBirim, 'adi', 'Adi')
+  const anketCevapBirimAdi =
+    anketCevapBirimAdiRaw != null ? String(anketCevapBirimAdiRaw).trim() || null : null
+
+  return { anketCevapBirimId, anketCevapBirimAdi }
+}
+
 function mergeSoruMetadata(
   soru: AnketYanitSoruDto,
   metadata: Record<string, unknown> | undefined,
@@ -132,6 +146,14 @@ function mergeSoruMetadata(
     altSecenekler: (() => {
       const parsed = readAltSeceneklerFromFields(metadata)
       return parsed.length > 0 ? parsed : soru.altSecenekler
+    })(),
+    anketCevapBirimId: (() => {
+      const birim = readBirimFields(metadata)
+      return birim.anketCevapBirimId ?? soru.anketCevapBirimId
+    })(),
+    anketCevapBirimAdi: (() => {
+      const birim = readBirimFields(metadata)
+      return birim.anketCevapBirimAdi ?? soru.anketCevapBirimAdi
     })(),
   }
 }
@@ -200,6 +222,7 @@ export function mapAnketYanitSoruFromApi(
   const sira = readNumber(pick(row, 'sira', 'Sira')) ?? 0
   const cevapFields = readCevapFields(pick(row, 'cevap', 'Cevap'))
   const yanitlandi = Boolean(pick(row, 'yanitlandi', 'Yanitlandi'))
+  const birimFields = readBirimFields(row)
 
   const soru: AnketYanitSoruDto = {
     soruId,
@@ -228,6 +251,8 @@ export function mapAnketYanitSoruFromApi(
     cevapGirdiTipId: readNumber(pick(row, 'cevapGirdiTipId', 'CevapGirdiTipId')),
     secenekGrupId: readOptionalPositiveId(pick(row, 'secenekGrupId', 'SecenekGrupId')),
     altSecenekler: readAltSeceneklerFromFields(row),
+    anketCevapBirimId: birimFields.anketCevapBirimId,
+    anketCevapBirimAdi: birimFields.anketCevapBirimAdi,
     yanitlandi,
     cevapText:
       cevapFields.cevapText ??
@@ -254,6 +279,8 @@ function mapYanitlanmayanSoruFromApi(raw: unknown): AnketYanitSoruDto | null {
   const soruId = readNumber(pick(row, 'id', 'Id', 'soruId', 'SoruId'))
   if (soruId == null || soruId <= 0) return null
 
+  const birimFields = readBirimFields(row)
+
   return {
     soruId,
     sira: readNumber(pick(row, 'sira', 'Sira')) ?? 0,
@@ -275,6 +302,8 @@ function mapYanitlanmayanSoruFromApi(raw: unknown): AnketYanitSoruDto | null {
     cevapGirdiTipId: readNumber(pick(row, 'cevapGirdiTipId', 'CevapGirdiTipId')),
     secenekGrupId: readOptionalPositiveId(pick(row, 'secenekGrupId', 'SecenekGrupId')),
     altSecenekler: readAltSeceneklerFromFields(row),
+    anketCevapBirimId: birimFields.anketCevapBirimId,
+    anketCevapBirimAdi: birimFields.anketCevapBirimAdi,
     yanitlandi: false,
     cevapText: null,
     cevapAltSecenekId: null,
@@ -358,14 +387,28 @@ export function mapAnketYanitOturumFromApi(
   const yanitlananSoruSayisi = readNumber(
     pick(row, 'yanitlananSoruSayisi', 'YanitlananSoruSayisi'),
   )
+  const toplamGorunurSoruSayisi = readNumber(
+    pick(row, 'toplamGorunurSoruSayisi', 'ToplamGorunurSoruSayisi'),
+  )
   const baslikId = readNumber(pick(row, 'baslikId', 'BaslikId'))
   const baslikAdiRaw = pick(row, 'baslikAdi', 'BaslikAdi')
   const sablonAdiRaw = pick(row, 'sablonAdi', 'SablonAdi')
 
+  const tamamlanabilirRow = asRecord(tamamlanabilirRaw)
   const tamamlanabilirFromApi =
     tamamlanabilirRaw !== undefined
       ? readTamamlanabilir(tamamlanabilirRaw)
       : readTamamlanabilir(pick(row, 'tamamlanabilir', 'Tamamlanabilir'))
+
+  const yanitlananFromTamamlanabilir = readNumber(
+    pick(tamamlanabilirRow, 'yanitlananSoruSayisi', 'YanitlananSoruSayisi'),
+  )
+  const toplamFromTamamlanabilir = readNumber(
+    pick(tamamlanabilirRow, 'toplamGorunurSoruSayisi', 'ToplamGorunurSoruSayisi'),
+  )
+
+  const resolvedYanitlanan = yanitlananSoruSayisi ?? yanitlananFromTamamlanabilir
+  const resolvedToplam = toplamGorunurSoruSayisi ?? toplamFromTamamlanabilir
 
   const tamamlanabilir =
     yanitlanmayanSoruSayisi != null
@@ -378,8 +421,9 @@ export function mapAnketYanitOturumFromApi(
     baslikId,
     baslikAdi: baslikAdiRaw != null ? String(baslikAdiRaw) : null,
     sablonAdi: sablonAdiRaw != null ? String(sablonAdiRaw) : null,
-    yanitlananSoruSayisi: yanitlananSoruSayisi ?? undefined,
+    yanitlananSoruSayisi: resolvedYanitlanan ?? undefined,
     yanitlanmayanSoruSayisi: yanitlanmayanSoruSayisi ?? undefined,
+    toplamGorunurSoruSayisi: resolvedToplam ?? undefined,
     tamamlanabilir,
     sorular: sortSorular(sorular),
   }

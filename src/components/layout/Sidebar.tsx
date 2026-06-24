@@ -43,7 +43,7 @@ export function Sidebar() {
     useUiStore()
   const location = useLocation()
   const { hasReadPermission, isAdmin, loading } = usePermissions()
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ Tanımlamalar: true })
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
 
   const visibleSections = useMemo(() => {
     if (loading) return []
