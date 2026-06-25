@@ -1,3 +1,4 @@
+import type { AxiosRequestConfig } from 'axios'
 import { api } from './axios-instance'
 import type { ApiResponse } from './types'
 
@@ -22,8 +23,8 @@ export const apiClient = {
     return unwrap(data)
   },
 
-  async post<T>(url: string, body?: unknown): Promise<T> {
-    const { data } = await api.post<ApiResponse<T> | T>(url, body)
+  async post<T>(url: string, body?: unknown, config?: AxiosRequestConfig): Promise<T> {
+    const { data } = await api.post<ApiResponse<T> | T>(url, body, config)
     return unwrap(data)
   },
 

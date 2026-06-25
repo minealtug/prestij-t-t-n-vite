@@ -4,10 +4,16 @@ import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { useRequirePagePermission } from '@/features/permissions/hooks/use-require-page-permission'
+import { getErrorMessage } from '@/lib/api/api-error'
+import { useAuthStore } from '@/stores/auth-store'
 import { CreateUserModal } from '../components/CreateUserModal'
 import { EditUserModal } from '../components/EditUserModal'
+import { UserMigrationConfirmModal } from '../components/UserMigrationConfirmModal'
+import { UserMigrationResultModal } from '../components/UserMigrationResultModal'
 import { UsersTable } from '../components/UsersTable'
+import { USER_MIGRATION_DONE_KEY, useMigrateUsers } from '../hooks/use-migrate-users'
 import { useUsers } from '../hooks/use-users'
+import type { UserMigrationResponse } from '../types/user-migration.types'
 import type { UserDto } from '../types/user.types'
 
 function matchesSearch(user: UserDto, query: string) {
@@ -31,11 +37,35 @@ function matchesSearch(user: UserDto, query: string) {
 
 export function UsersPage() {
   const { canRead, canEdit, loading: permissionLoading } = useRequirePagePermission()
+  const admin = useAuthStore((s) => s.user?.admin)
   const [search, setSearch] = useState('')
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<UserDto | null>(null)
+  const [migrationDone] = useState(() => localStorage.getItem(USER_MIGRATION_DONE_KEY) === '1')
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false)
+  const [resultModalOpen, setResultModalOpen] = useState(false)
+  const [migrationResult, setMigrationResult] = useState<UserMigrationResponse | null>(null)
+  const [migrationError, setMigrationError] = useState<string | null>(null)
 
   const usersQuery = useUsers()
+  const migrateMutation = useMigrateUsers()
+
+  const handleMigrationConfirm = () => {
+    setMigrationError(null)
+    setMigrationResult(null)
+    migrateMutation.mutate(undefined, {
+      onSuccess: (data) => {
+        setConfirmModalOpen(false)
+        setMigrationResult(data)
+        setResultModalOpen(true)
+      },
+      onError: (error) => {
+        setConfirmModalOpen(false)
+        setMigrationError(getErrorMessage(error))
+        setResultModalOpen(true)
+      },
+    })
+  }
 
   const filteredUsers = useMemo(() => {
     const items = usersQuery.data ?? []
@@ -57,14 +87,25 @@ export function UsersPage() {
   return (
     <PageContainer>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <Button
-          onClick={() => setCreateModalOpen(true)}
-          className="w-full sm:w-auto"
-          disabled={!canEdit}
-        >
-          <UserPlus className="h-4 w-4" />
-          Yeni Kullanıcı
-        </Button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Button
+            onClick={() => setCreateModalOpen(true)}
+            className="w-full sm:w-auto"
+            disabled={!canEdit}
+          >
+            <UserPlus className="h-4 w-4" />
+            Yeni Kullanıcı
+          </Button>
+          {admin && !migrationDone && !migrateMutation.isSuccess && (
+            <Button
+              variant="danger"
+              className="w-full sm:w-auto"
+              onClick={() => setConfirmModalOpen(true)}
+            >
+              Kullanıcı migrasyonu + şifre ata
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="app-table-shell !rounded-md">
@@ -100,6 +141,18 @@ export function UsersPage() {
         open={editingUser != null}
         user={editingUser}
         onClose={() => setEditingUser(null)}
+      />
+      <UserMigrationConfirmModal
+        open={confirmModalOpen}
+        loading={migrateMutation.isPending}
+        onClose={() => setConfirmModalOpen(false)}
+        onConfirm={handleMigrationConfirm}
+      />
+      <UserMigrationResultModal
+        open={resultModalOpen}
+        result={migrationResult}
+        error={migrationError}
+        onClose={() => setResultModalOpen(false)}
       />
     </PageContainer>
   )
