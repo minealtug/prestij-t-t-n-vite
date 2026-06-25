@@ -122,7 +122,7 @@
   }
 
   .app-table tbody tr:hover {
-    background-color: #fff9f0;
+    @apply bg-primary-50;
   }
 
   .app-table tbody tr.app-table-row--in-progress {
