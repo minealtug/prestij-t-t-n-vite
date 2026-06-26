@@ -108,19 +108,19 @@ export function UsersPage() {
         </div>
       </div>
 
-      <div className="app-table-shell !rounded-md">
-        <div className="flex flex-col gap-3 border-b border-[#ececec] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="w-full overflow-visible rounded-lg border border-[#e8ecf0] bg-white">
+        <div className="flex flex-col gap-3 border-b border-[#ececec] px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4">
           <div className="relative min-w-0 flex-1 sm:max-w-lg">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
             <Input
               className="!h-9 pl-9"
-              placeholder="Ad, kullanıcı adı, departman, e-posta..."
+              placeholder="Ad, kullanıcı adı, departman..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           {usersQuery.data && (
-            <p className="shrink-0 text-xs text-muted">
+            <p className="shrink-0 text-xs text-muted sm:text-right">
               Gösterilen: {filteredUsers.length} / {usersQuery.data.length} kayıt
             </p>
           )}

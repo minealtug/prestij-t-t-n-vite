@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
     target: proxyTarget,
     changeOrigin: true,
     secure: false,
+    timeout: 120_000,
   }
 
   return {
